@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, useState, useMemo } from 'react';
-import { View, ActivityIndicator, TouchableOpacity, Text, BackHandler, AppState } from 'react-native';
+import { View, ActivityIndicator, TouchableOpacity, Text, BackHandler, Platform } from 'react-native';
 import { WebView, WebViewNavigation } from 'react-native-webview';
 import { useTheme } from '@/hooks/useTheme';
 import { Screen } from '@/components/Screen';
@@ -13,6 +13,24 @@ const DEFAULT_CONFIG = {
   title: process.env.EXPO_PUBLIC_APP_TITLE || 'WebView',
 };
 
+// Web 平台的 iframe 组件
+function WebIframe({ url, style }: { url: string; style: any }) {
+  return (
+    <iframe
+      src={url}
+      style={{
+        border: 'none',
+        width: '100%',
+        height: '100%',
+        ...style,
+      }}
+      title="Web Content"
+      allowFullScreen
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+    />
+  );
+}
+
 export default function WebViewScreen() {
   const { theme, isDark } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -21,7 +39,7 @@ export default function WebViewScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 处理返回键
+  // 处理返回键（仅原生平台）
   const handleBackPress = useCallback(() => {
     if (canGoBack && webViewRef.current) {
       webViewRef.current.goBack();
@@ -31,16 +49,18 @@ export default function WebViewScreen() {
   }, [canGoBack]);
 
   React.useEffect(() => {
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
-    return () => backHandler.remove();
+    if (Platform.OS !== 'web') {
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
+      return () => backHandler.remove();
+    }
   }, [handleBackPress]);
 
-  // 处理导航变化
+  // 处理导航变化（仅原生平台）
   const handleNavigationStateChange = useCallback((navState: WebViewNavigation) => {
     setCanGoBack(navState.canGoBack);
   }, []);
 
-  // 处理加载状态
+  // 处理加载状态（仅原生平台）
   const handleLoadStart = useCallback(() => {
     setLoading(true);
     setError(null);
@@ -50,20 +70,35 @@ export default function WebViewScreen() {
     setLoading(false);
   }, []);
 
-  // 处理加载错误
+  // 处理加载错误（仅原生平台）
   const handleError = useCallback((syntheticEvent: any) => {
     const { nativeEvent } = syntheticEvent;
     setLoading(false);
     setError(nativeEvent.description || '加载失败，请检查网络连接');
   }, []);
 
-  // 重新加载
+  // 重新加载（仅原生平台）
   const handleReload = useCallback(() => {
     setError(null);
     setLoading(true);
     webViewRef.current?.reload();
   }, []);
 
+  // Web 平台不需要加载状态（iframe 加载很快）
+  if (Platform.OS === 'web') {
+    return (
+      <Screen
+        backgroundColor={theme.backgroundRoot}
+        statusBarStyle={isDark ? 'light' : 'dark'}
+      >
+        <View style={styles.container}>
+          <WebIframe url={DEFAULT_CONFIG.url} style={styles.webView} />
+        </View>
+      </Screen>
+    );
+  }
+
+  // 原生平台（iOS/Android）
   return (
     <Screen
       backgroundColor={theme.backgroundRoot}
