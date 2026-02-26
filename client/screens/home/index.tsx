@@ -39,6 +39,8 @@ export default function WebViewScreen() {
   const [canGoBack, setCanGoBack] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showBackHint, setShowBackHint] = useState(false);
+  const backPressTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // 处理返回键（仅原生平台）
   const handleBackPress = useCallback(() => {
@@ -46,13 +48,36 @@ export default function WebViewScreen() {
       webViewRef.current.goBack();
       return true; // 阻止默认返回行为
     }
-    return false; // 允许默认返回行为（退出应用）
-  }, [canGoBack]);
+    
+    // 如果不能返回，显示提示
+    if (!showBackHint) {
+      setShowBackHint(true);
+      
+      // 2 秒后自动隐藏提示
+      if (backPressTimeout.current) {
+        clearTimeout(backPressTimeout.current);
+      }
+      backPressTimeout.current = setTimeout(() => {
+        setShowBackHint(false);
+      }, 2000);
+      
+      return true; // 阻止退出
+    }
+    
+    // 如果提示已显示，允许退出
+    return false;
+  }, [canGoBack, showBackHint]);
 
   React.useEffect(() => {
     if (Platform.OS !== 'web') {
       const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
-      return () => backHandler.remove();
+      return () => {
+        backHandler.remove();
+        // 清理 timeout
+        if (backPressTimeout.current) {
+          clearTimeout(backPressTimeout.current);
+        }
+      };
     }
   }, [handleBackPress]);
 
@@ -149,8 +174,8 @@ export default function WebViewScreen() {
           )}
         />
 
-        {/* 返回键提示（仅当可以返回时显示） */}
-        {canGoBack && (
+        {/* 返回键提示（仅在用户第一次按下返回键时显示 2 秒） */}
+        {showBackHint && (
           <View style={styles.backHint}>
             <ThemedText variant="caption" color={theme.textMuted}>
               再按一次返回键退出应用
