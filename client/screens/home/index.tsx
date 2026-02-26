@@ -5,11 +5,12 @@ import { useTheme } from '@/hooks/useTheme';
 import { Screen } from '@/components/Screen';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
+import { AdvancedLoading } from '@/components/AdvancedLoading';
 import { createStyles } from './styles';
 
 // 默认配置（可通过环境变量或配置文件覆盖）
 const DEFAULT_CONFIG = {
-  url: process.env.EXPO_PUBLIC_WEBVIEW_URL || 'https://c4e5cb87-e5c1-47fe-a7c4-398d5b9e6a57.dev.coze.site',
+  url: process.env.EXPO_PUBLIC_WEBVIEW_URL || 'https://gamepay-app-rouge.vercel.app',
   title: process.env.EXPO_PUBLIC_APP_TITLE || 'WebView',
 };
 
@@ -144,12 +145,7 @@ export default function WebViewScreen() {
           // 自定义 User-Agent（可选，用于伪装成浏览器）
           // userAgent="Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
           renderLoading={() => (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={theme.primary} />
-              <ThemedText variant="body" color={theme.textSecondary} style={styles.loadingText}>
-                加载中...
-              </ThemedText>
-            </View>
+            <AdvancedLoading appName={DEFAULT_CONFIG.title} />
           )}
         />
 
