@@ -1,11 +1,12 @@
 import React, { useRef, useCallback, useState, useMemo } from 'react';
-import { View, ActivityIndicator, TouchableOpacity, Text, BackHandler, Platform } from 'react-native';
+import { View, TouchableOpacity, Text, BackHandler, Platform } from 'react-native';
 import { WebView, WebViewNavigation } from 'react-native-webview';
 import { useTheme } from '@/hooks/useTheme';
 import { Screen } from '@/components/Screen';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { AdvancedLoading } from '@/components/AdvancedLoading';
+import { FontAwesome6 } from '@expo/vector-icons';
 import { createStyles } from './styles';
 
 // 默认配置（可通过环境变量或配置文件覆盖）
@@ -39,8 +40,17 @@ export default function WebViewScreen() {
   const [canGoBack, setCanGoBack] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<number | null>(null);
   const [showBackHint, setShowBackHint] = useState(false);
   const backPressTimeout = useRef<NodeJS.Timeout | null>(null);
+  const retryTimeout = useRef<NodeJS.Timeout | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetry = 3;
+  
+  // 获取重试延迟时间（指数退避，最大 5 秒）
+  const getRetryDelay = useCallback((count: number) => {
+    return Math.min(1000 * Math.pow(2, count), 5000);
+  }, []);
 
   // 处理返回键（仅原生平台）
   const handleBackPress = useCallback(() => {
@@ -73,9 +83,12 @@ export default function WebViewScreen() {
       const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
       return () => {
         backHandler.remove();
-        // 清理 timeout
+        // 清理定时器
         if (backPressTimeout.current) {
           clearTimeout(backPressTimeout.current);
+        }
+        if (retryTimeout.current) {
+          clearTimeout(retryTimeout.current);
         }
       };
     }
@@ -90,25 +103,81 @@ export default function WebViewScreen() {
   const handleLoadStart = useCallback(() => {
     setLoading(true);
     setError(null);
+    setErrorCode(null);
   }, []);
 
   const handleLoadEnd = useCallback(() => {
     setLoading(false);
+    // 重置重试计数
+    setRetryCount(0);
   }, []);
 
   // 处理加载错误（仅原生平台）
   const handleError = useCallback((syntheticEvent: any) => {
     const { nativeEvent } = syntheticEvent;
     setLoading(false);
-    setError(nativeEvent.description || '加载失败，请检查网络连接');
+    
+    const errorCode = nativeEvent.code || -1;
+    const errorDesc = nativeEvent.description || '加载失败';
+    
+    setErrorCode(errorCode);
+    
+    // 根据错误代码提供更友好的提示
+    let errorMessage = '加载失败，请检查网络连接';
+    
+    if (errorCode === -6) {
+      errorMessage = '无法连接到服务器，请检查网络或稍后重试';
+    } else if (errorCode === -2) {
+      errorMessage = '页面不存在或已移除';
+    } else if (errorCode === -1) {
+      errorMessage = '网络错误，请检查网络连接';
+    } else if (errorCode === -3) {
+      errorMessage = '服务器错误，请稍后重试';
+    }
+    
+    setError(errorMessage);
   }, []);
 
   // 重新加载（仅原生平台）
   const handleReload = useCallback(() => {
+    // 清理定时器
+    if (retryTimeout.current) {
+      clearTimeout(retryTimeout.current);
+      retryTimeout.current = null;
+    }
+    
     setError(null);
+    setErrorCode(null);
     setLoading(true);
+    setRetryCount(0);
     webViewRef.current?.reload();
   }, []);
+
+  // 自动重试
+  const handleAutoRetry = useCallback(() => {
+    if (retryCount < maxRetry) {
+      // 清理之前的定时器
+      if (retryTimeout.current) {
+        clearTimeout(retryTimeout.current);
+      }
+      
+      setLoading(true);
+      setError(null);
+      
+      // 使用指数退避算法
+      const nextRetryCount = retryCount + 1;
+      const retryDelay = getRetryDelay(nextRetryCount);
+      
+      retryTimeout.current = setTimeout(() => {
+        setRetryCount(nextRetryCount);
+        webViewRef.current?.reload();
+        retryTimeout.current = null;
+      }, retryDelay);
+    } else {
+      // 已达到最大重试次数，显示提示
+      alert(`已重试 ${maxRetry} 次，请检查网络连接`);
+    }
+  }, [retryCount, getRetryDelay]);
 
   // Web 平台不需要加载状态（iframe 加载很快）
   if (Platform.OS === 'web') {
@@ -134,14 +203,45 @@ export default function WebViewScreen() {
         {/* 错误提示 */}
         {error && (
           <ThemedView level="default" style={styles.errorContainer}>
-            <ThemedText variant="body" color={theme.error} style={styles.errorText}>
+            <View style={styles.errorIcon}>
+              <FontAwesome6 name="wifi" size={40} color={theme.error} />
+            </View>
+            
+            <ThemedText variant="h3" color={theme.textPrimary} style={styles.errorTitle}>
+              无法加载页面
+            </ThemedText>
+            
+            <ThemedText variant="body" color={theme.textSecondary} style={styles.errorText}>
               {error}
             </ThemedText>
-            <TouchableOpacity style={styles.retryButton} onPress={handleReload}>
-              <ThemedText variant="smallMedium" color={theme.buttonPrimaryText}>
-                重试
+            
+            {errorCode && (
+              <ThemedText variant="caption" color={theme.textMuted} style={styles.errorCode}>
+                错误代码: {errorCode}
               </ThemedText>
-            </TouchableOpacity>
+            )}
+            
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity 
+                style={[styles.retryButton, styles.primaryButton]} 
+                onPress={handleReload}
+              >
+                <FontAwesome6 name="rotate-right" size={16} color={theme.buttonPrimaryText} style={styles.buttonIcon} />
+                <ThemedText variant="smallMedium" color={theme.buttonPrimaryText}>
+                  立即重试
+                </ThemedText>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.retryButton, styles.secondaryButton]} 
+                onPress={handleAutoRetry}
+              >
+                <FontAwesome6 name="clock" size={16} color={theme.textPrimary} style={styles.buttonIcon} />
+                <ThemedText variant="smallMedium" color={theme.textPrimary}>
+                  自动重试 ({retryCount}/{maxRetry})
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
           </ThemedView>
         )}
 
