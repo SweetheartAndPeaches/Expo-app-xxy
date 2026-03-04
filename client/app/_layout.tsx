@@ -27,7 +27,6 @@ export default function RootLayout() {
             headerShown: false
           }}>
             <Stack.Screen name="index" options={{ title: "" }} />
-            <Stack.Screen name="notifications" options={{ title: "通知监听" }} />
           </Stack>
           <Toast />
         </GestureHandlerRootView>

@@ -84,21 +84,5 @@ export const createStyles = (theme: Theme) => {
       marginHorizontal: Spacing.xl,
       borderRadius: BorderRadius.full,
     },
-    notificationButton: {
-      position: 'absolute',
-      top: Spacing['2xl'],
-      right: Spacing.xl,
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      backgroundColor: theme.primary,
-      justifyContent: 'center',
-      alignItems: 'center',
-      elevation: 4,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.3,
-      shadowRadius: 4,
-    },
   });
 };
