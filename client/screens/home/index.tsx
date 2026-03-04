@@ -7,6 +7,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { AdvancedLoading } from '@/components/AdvancedLoading';
 import { FontAwesome6 } from '@expo/vector-icons';
+import { useSafeRouter } from '@/hooks/useSafeRouter';
 import { createStyles } from './styles';
 
 // 默认配置（可通过环境变量或配置文件覆盖）
@@ -46,6 +47,9 @@ export default function WebViewScreen() {
   const retryTimeout = useRef<NodeJS.Timeout | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const maxRetry = 3;
+  
+  // 路由导航
+  const router = useSafeRouter();
   
   // 获取重试延迟时间（指数退避，最大 5 秒）
   const getRetryDelay = useCallback((count: number) => {
@@ -281,6 +285,17 @@ export default function WebViewScreen() {
               再按一次返回键退出应用
             </ThemedText>
           </View>
+        )}
+        
+        {/* 通知监听按钮（仅 Android 平台） */}
+        {Platform.OS === 'android' && (
+          <TouchableOpacity
+            style={styles.notificationButton}
+            onPress={() => router.push('/notifications')}
+            activeOpacity={0.8}
+          >
+            <FontAwesome6 name="bell" size={20} color={theme.buttonPrimaryText} />
+          </TouchableOpacity>
         )}
       </View>
     </Screen>
