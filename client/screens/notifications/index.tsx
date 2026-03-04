@@ -96,18 +96,41 @@ export default function NotificationsScreen() {
   // 打开系统设置
   const openSystemSettings = useCallback(async () => {
     try {
-      const packageName = 'com.anonymous.x7610999068365602850'; // 从 app.config.ts 获取
-      const settingsUrl = `android-app://${packageName}/android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS`;
-      
+      // 方案1：打开通知访问权限页面（标准 Android）
+      const intent = `android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS`;
       try {
-        await Linking.canOpenURL(settingsUrl);
-        await Linking.openURL(settingsUrl);
-      } catch {
-        // 备用方案：打开通用设置
-        await Linking.openSettings();
+        await Linking.openURL(intent);
+        return;
+      } catch (e) {
+        console.log('方案1失败，尝试方案2');
       }
+      
+      // 方案2：打开应用详情页（荣耀/华为等需要从这里进入）
+      const packageName = 'com.anonymous.x7610999068365602850';
+      const appDetailsUrl = `android.settings.APPLICATION_DETAILS_SETTINGS`;
+      try {
+        await Linking.openURL(appDetailsUrl + '?package=' + packageName);
+        return;
+      } catch (e) {
+        console.log('方案2失败，尝试方案3');
+      }
+      
+      // 方案3：打开通用设置
+      await Linking.openSettings();
     } catch (error) {
       console.error('打开设置失败:', error);
+      alert('无法打开系统设置，请手动进入：\n设置 → 应用和服务 → 权限管理 → 特殊访问权限 → 通知访问权限');
+    }
+  }, []);
+  
+  // 打开应用详情页
+  const openAppDetails = useCallback(async () => {
+    try {
+      const packageName = 'com.anonymous.x7610999068365602850';
+      const appDetailsUrl = `android.settings.APPLICATION_DETAILS_SETTINGS`;
+      await Linking.openURL(appDetailsUrl + '?package=' + packageName);
+    } catch (error) {
+      console.error('打开应用详情失败:', error);
     }
   }, []);
   
@@ -159,12 +182,48 @@ export default function NotificationsScreen() {
           <ThemedText variant="body" color={theme.textSecondary} style={styles.emptyText}>
             此功能需要通知监听权限才能读取其他应用的通知
           </ThemedText>
-          <TouchableOpacity style={styles.permissionButton} onPress={openSystemSettings}>
-            <FontAwesome6 name="gear" size={16} color={theme.buttonPrimaryText} style={styles.buttonIcon} />
-            <ThemedText variant="smallMedium" color={theme.buttonPrimaryText}>
-              打开系统设置
+          
+          {/* 荣耀/华为手机路径说明 */}
+          <View style={styles.pathContainer}>
+            <ThemedText variant="caption" color={theme.textSecondary} style={styles.pathTitle}>
+              荣耀/华为手机路径：
             </ThemedText>
-          </TouchableOpacity>
+            <ThemedText variant="caption" color={theme.textSecondary} style={styles.pathText}>
+              设置 → 应用和服务 → 权限管理 → 特殊访问权限 → 通知访问权限
+            </ThemedText>
+          </View>
+          
+          {/* 其他手机路径说明 */}
+          <View style={styles.pathContainer}>
+            <ThemedText variant="caption" color={theme.textSecondary} style={styles.pathTitle}>
+              其他手机路径：
+            </ThemedText>
+            <ThemedText variant="caption" color={theme.textSecondary} style={styles.pathText}>
+              设置 → 应用 → 权限管理 → 特殊访问权限 → 通知访问权限
+            </ThemedText>
+          </View>
+          
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity 
+              style={styles.permissionButton} 
+              onPress={openSystemSettings}
+            >
+              <FontAwesome6 name="gear" size={16} color={theme.buttonPrimaryText} style={styles.buttonIcon} />
+              <ThemedText variant="smallMedium" color={theme.buttonPrimaryText}>
+                打开通知权限设置
+              </ThemedText>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.secondaryButton} 
+              onPress={openAppDetails}
+            >
+              <FontAwesome6 name="circle-info" size={16} color={theme.textPrimary} style={styles.buttonIcon} />
+              <ThemedText variant="smallMedium" color={theme.textPrimary}>
+                打开应用详情
+              </ThemedText>
+            </TouchableOpacity>
+          </View>
         </ThemedView>
       );
     }
@@ -194,7 +253,7 @@ export default function NotificationsScreen() {
         </ThemedText>
       </ThemedView>
     );
-  }, [hasPermission, isListening, openSystemSettings, theme, styles]);
+  }, [hasPermission, isListening, openSystemSettings, openAppDetails, theme, styles]);
   
   // 仅 Android 平台支持
   if (Platform.OS !== 'android') {
