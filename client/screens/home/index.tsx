@@ -1,11 +1,12 @@
 import React, { useRef, useCallback, useState, useMemo } from 'react';
-import { View, TouchableOpacity, Text, BackHandler, Platform } from 'react-native';
+import { View, TouchableOpacity, Text, BackHandler, Platform, Linking } from 'react-native';
 import { WebView, WebViewNavigation } from 'react-native-webview';
 import { useTheme } from '@/hooks/useTheme';
 import { Screen } from '@/components/Screen';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { AdvancedLoading } from '@/components/AdvancedLoading';
+import { AdvancedError } from '@/components/AdvancedError';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { createStyles } from './styles';
 
@@ -50,6 +51,18 @@ export default function WebViewScreen() {
   // 获取重试延迟时间（指数退避，最大 5 秒）
   const getRetryDelay = useCallback((count: number) => {
     return Math.min(1000 * Math.pow(2, count), 5000);
+  }, []);
+
+  // 检查网络
+  const handleCheckNetwork = useCallback(() => {
+    // 打开系统网络设置
+    Linking.openSettings();
+  }, []);
+
+  // 联系支持
+  const handleContactSupport = useCallback(() => {
+    // 这里可以跳转到支持页面或打开邮件应用
+    alert('如需帮助，请联系技术支持');
   }, []);
 
   // 处理返回键（仅原生平台）
@@ -202,47 +215,13 @@ export default function WebViewScreen() {
       <View style={styles.container}>
         {/* 错误提示 */}
         {error && (
-          <ThemedView level="default" style={styles.errorContainer}>
-            <View style={styles.errorIcon}>
-              <FontAwesome6 name="wifi" size={40} color={theme.error} />
-            </View>
-            
-            <ThemedText variant="h3" color={theme.textPrimary} style={styles.errorTitle}>
-              无法加载页面
-            </ThemedText>
-            
-            <ThemedText variant="body" color={theme.textSecondary} style={styles.errorText}>
-              {error}
-            </ThemedText>
-            
-            {errorCode && (
-              <ThemedText variant="caption" color={theme.textMuted} style={styles.errorCode}>
-                错误代码: {errorCode}
-              </ThemedText>
-            )}
-            
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity 
-                style={[styles.retryButton, styles.primaryButton]} 
-                onPress={handleReload}
-              >
-                <FontAwesome6 name="rotate-right" size={16} color={theme.buttonPrimaryText} style={styles.buttonIcon} />
-                <ThemedText variant="smallMedium" color={theme.buttonPrimaryText}>
-                  立即重试
-                </ThemedText>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.retryButton, styles.secondaryButton]} 
-                onPress={handleAutoRetry}
-              >
-                <FontAwesome6 name="clock" size={16} color={theme.textPrimary} style={styles.buttonIcon} />
-                <ThemedText variant="smallMedium" color={theme.textPrimary}>
-                  自动重试 ({retryCount}/{maxRetry})
-                </ThemedText>
-              </TouchableOpacity>
-            </View>
-          </ThemedView>
+          <AdvancedError
+            errorCode={errorCode || -6}
+            errorDescription={error}
+            onRetry={handleReload}
+            onCheckNetwork={handleCheckNetwork}
+            onContactSupport={handleContactSupport}
+          />
         )}
 
         {/* WebView */}
