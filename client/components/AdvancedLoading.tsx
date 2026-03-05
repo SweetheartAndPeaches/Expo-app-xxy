@@ -1,10 +1,27 @@
 /* eslint-disable react-hooks/refs */
-import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated, Easing } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, StyleSheet, Animated, Easing, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from './ThemedText';
 import { useTheme } from '@/hooks/useTheme';
 import { FontAwesome6 } from '@expo/vector-icons';
+
+const { width } = Dimensions.get('window');
+
+interface LoadingStep {
+  id: string;
+  text: string;
+  delay: number;
+}
+
+const LOADING_STEPS: LoadingStep[] = [
+  { id: 'step-1', text: '正在连接服务器...', delay: 300 },
+  { id: 'step-2', text: '正在加载页面内容...', delay: 900 },
+  { id: 'step-3', text: '正在初始化资源...', delay: 1500 },
+  { id: 'step-4', text: '准备就绪', delay: 2100 },
+];
+
+type StepStatus = 'pending' | 'spinning' | 'done';
 
 interface AdvancedLoadingProps {
   appName?: string;
@@ -13,156 +30,256 @@ interface AdvancedLoadingProps {
 export function AdvancedLoading({ appName }: AdvancedLoadingProps) {
   const { theme } = useTheme();
 
-  // 旋转动画
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const pulseAnim = useRef(new Animated.Value(0)).current;
+  // 轨道旋转动画
+  const ring1Rotate = useRef(new Animated.Value(0)).current;
+  const ring2Rotate = useRef(new Animated.Value(0)).current;
+  const ring3Rotate = useRef(new Animated.Value(0)).current;
+  
+  // 中心点脉冲动画
+  const centerDotScale = useRef(new Animated.Value(1)).current;
+  const centerDotOpacity = useRef(new Animated.Value(1)).current;
+
+  // Shimmer 动画
+  const shimmerTranslate = useRef(new Animated.Value(-width)).current;
+
+  // 步骤状态
+  const [stepStatuses, setStepStatuses] = useState<Record<string, StepStatus>>({});
+  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    // 旋转动画
-    const rotateAnimation = Animated.loop(
-      Animated.timing(rotateAnim, {
+    // 轨道圆环1：顺时针旋转，速度较快
+    const ring1Animation = Animated.loop(
+      Animated.timing(ring1Rotate, {
         toValue: 1,
+        duration: 1200,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+
+    // 轨道圆环2：逆时针旋转，速度中等
+    const ring2Animation = Animated.loop(
+      Animated.timing(ring2Rotate, {
+        toValue: -1,
+        duration: 1800,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+
+    // 轨道圆环3：顺时针旋转，速度较慢
+    const ring3Animation = Animated.loop(
+      Animated.timing(ring3Rotate, {
+        toValue: 1,
+        duration: 2400,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+
+    // 中心点脉冲动画
+    const centerDotAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(centerDotScale, {
+            toValue: 1.4,
+            duration: 600,
+            easing: Easing.out(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(centerDotOpacity, {
+            toValue: 0.6,
+            duration: 600,
+            easing: Easing.out(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(centerDotScale, {
+            toValue: 1,
+            duration: 600,
+            easing: Easing.in(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(centerDotOpacity, {
+            toValue: 1,
+            duration: 600,
+            easing: Easing.in(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ]),
+      ])
+    );
+
+    // Shimmer 动画
+    const shimmerAnimation = Animated.loop(
+      Animated.timing(shimmerTranslate, {
+        toValue: width * 2,
         duration: 2000,
         easing: Easing.linear,
         useNativeDriver: true,
       })
     );
 
-    // 缩放脉冲动画
-    const pulseAnimation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1000,
-          easing: Easing.out(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 0,
-          duration: 1000,
-          easing: Easing.in(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ])
-    );
+    ring1Animation.start();
+    ring2Animation.start();
+    ring3Animation.start();
+    centerDotAnimation.start();
+    shimmerAnimation.start();
 
-    // 呼吸动画
-    const breathAnimation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(scaleAnim, {
-          toValue: 1.05,
-          duration: 1500,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(scaleAnim, {
-          toValue: 1,
-          duration: 1500,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    rotateAnimation.start();
-    pulseAnimation.start();
-    breathAnimation.start();
+    // 逐步显示加载步骤
+    const timers: NodeJS.Timeout[] = [];
+    
+    LOADING_STEPS.forEach((step, index) => {
+      const timer = setTimeout(() => {
+        // 当前步骤变为 spinning
+        setStepStatuses(prev => ({
+          ...prev,
+          [step.id]: 'spinning',
+        }));
+        
+        // 更新进度条
+        setProgress((index + 1) * 25);
+        
+        // 前一个步骤变为 done
+        if (index > 0) {
+          const prevStep = LOADING_STEPS[index - 1];
+          setStepStatuses(prev => ({
+            ...prev,
+            [prevStep.id]: 'done',
+          }));
+        }
+      }, step.delay);
+      
+      timers.push(timer);
+    });
 
     return () => {
-      rotateAnimation.stop();
-      pulseAnimation.stop();
-      breathAnimation.stop();
+      ring1Animation.stop();
+      ring2Animation.stop();
+      ring3Animation.stop();
+      centerDotAnimation.stop();
+      shimmerAnimation.stop();
+      timers.forEach(timer => clearTimeout(timer));
     };
   }, []);
 
-  const rotate = rotateAnim.interpolate({
+  const ring1RotateValue = ring1Rotate.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
   });
 
-  const pulseScale = pulseAnim.interpolate({
+  const ring2RotateValue = ring2Rotate.interpolate({
     inputRange: [0, 1],
-    outputRange: [1, 1.3],
+    outputRange: ['0deg', '-360deg'],
   });
 
-  const breathScale = scaleAnim.interpolate({
+  const ring3RotateValue = ring3Rotate.interpolate({
     inputRange: [0, 1],
-    outputRange: [1, 1.05],
+    outputRange: ['0deg', '360deg'],
   });
 
   return (
     <View style={styles.container}>
-      {/* 渐变背景 */}
-      <LinearGradient
-        colors={[theme.backgroundRoot, theme.backgroundDefault]}
-        style={StyleSheet.absoluteFill}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      />
-
-      {/* 主内容 */}
-      <Animated.View style={[styles.content, { transform: [{ scale: breathScale }] }]}>
-        {/* 脉冲圆环 */}
-        <View style={styles.pulseContainer}>
+      {/* 半透明深色背景 */}
+      <View style={styles.overlay} />
+      
+      {/* 加载卡片 */}
+      <View style={[styles.loadingCard, { backgroundColor: theme.backgroundRoot }]}>
+        {/* 顶部渐变闪烁效果 */}
+        <View style={styles.topBar}>
           <Animated.View
             style={[
-              styles.pulseRing,
+              styles.shimmerBar,
               {
-                transform: [{ scale: pulseScale }],
-                borderColor: theme.primary,
-                opacity: 0.3,
-              },
-            ]}
-          />
-          <Animated.View
-            style={[
-              styles.pulseRing,
-              {
-                transform: [
-                  {
-                    scale: pulseScale.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0.8, 1.1],
-                    }),
-                  },
-                ],
-                borderColor: theme.primary,
-                opacity: 0.2,
+                backgroundColor: theme.primary,
+                transform: [{ translateX: shimmerTranslate }],
               },
             ]}
           />
         </View>
 
-        {/* 旋转图标 */}
-        <Animated.View
-          style={[
-            styles.iconContainer,
-            {
-              transform: [{ rotate }],
-            },
-          ]}
-        >
-          <LinearGradient
-            colors={[theme.primary, theme.accent]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.iconGradient}
-          >
-            <FontAwesome6 name="globe" size={60} color={theme.buttonPrimaryText} />
-          </LinearGradient>
-        </Animated.View>
-
-        {/* 加载文本 */}
-        <View style={styles.textContainer}>
-          <ThemedText variant="h3" color={theme.textPrimary} style={styles.loadingText}>
-            正在加载
-          </ThemedText>
-          <View style={styles.dotsContainer}>
-            <Dot color={theme.primary} />
-            <Dot color={theme.accent} delay={200} />
-            <Dot color={theme.primary} delay={400} />
+        {/* 轨道旋转动画 */}
+        <View style={styles.orbitSpinner}>
+          {/* 圆环1 */}
+          <Animated.View
+            style={[
+              styles.ring,
+              { borderColor: theme.primary },
+              {
+                transform: [{ rotate: ring1RotateValue }],
+              },
+            ]}
+          />
+          
+          {/* 圆环2 */}
+          <Animated.View
+            style={[
+              styles.ring,
+              styles.ring2,
+              { borderColor: theme.accent || theme.primary },
+              {
+                transform: [{ rotate: ring2RotateValue }],
+              },
+            ]}
+          />
+          
+          {/* 圆环3 */}
+          <Animated.View
+            style={[
+              styles.ring,
+              styles.ring3,
+              { borderColor: theme.primary },
+              {
+                transform: [{ rotate: ring3RotateValue }],
+              },
+            ]}
+          />
+          
+          {/* 中心点 */}
+          <View style={styles.centerDot}>
+            <Animated.View
+              style={[
+                styles.centerDotInner,
+                {
+                  backgroundColor: theme.primary,
+                  transform: [{ scale: centerDotScale }],
+                  opacity: centerDotOpacity,
+                },
+              ]}
+            />
           </View>
+        </View>
+
+        {/* 加载标题 */}
+        <ThemedText variant="h3" color={theme.primary} style={styles.loadingTitle}>
+          正在加载...
+        </ThemedText>
+
+        {/* 加载步骤列表 */}
+        <View style={styles.stepsContainer}>
+          {LOADING_STEPS.map((step, index) => (
+            <LoadingStepItem
+              key={step.id}
+              step={step}
+              status={stepStatuses[step.id] || 'pending'}
+              theme={theme}
+              isVisible={stepStatuses[step.id] !== undefined}
+            />
+          ))}
+        </View>
+
+        {/* 进度条 */}
+        <View style={[styles.progressBarContainer, { backgroundColor: `${theme.primary}15` }]}>
+          <Animated.View
+            style={[
+              styles.progressBarFill,
+              {
+                width: `${progress}%`,
+                backgroundColor: theme.primary,
+              },
+            ]}
+          />
         </View>
 
         {/* 应用名称 */}
@@ -171,47 +288,110 @@ export function AdvancedLoading({ appName }: AdvancedLoadingProps) {
             {appName}
           </ThemedText>
         )}
-      </Animated.View>
+      </View>
     </View>
   );
 }
 
-// 点动画组件
-function Dot({ color, delay = 0 }: { color: string; delay?: number }) {
-  const opacityAnim = useRef(new Animated.Value(0));
+// 加载步骤项组件
+function LoadingStepItem({
+  step,
+  status,
+  theme,
+  isVisible,
+}: {
+  step: LoadingStep;
+  status: StepStatus;
+  theme: any;
+  isVisible: boolean;
+}) {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(-10)).current;
+  const rotateAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.delay(delay),
-        Animated.timing(opacityAnim.current, {
+    if (isVisible) {
+      // 入场动画
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 300,
+          duration: 400,
           easing: Easing.out(Easing.ease),
           useNativeDriver: true,
         }),
-        Animated.timing(opacityAnim.current, {
-          toValue: 0.3,
-          duration: 300,
-          easing: Easing.in(Easing.ease),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 400,
+          easing: Easing.out(Easing.ease),
           useNativeDriver: true,
         }),
-      ])
-    );
-    animation.start();
-    return () => animation.stop();
-  }, [delay]);
+      ]).start();
+    }
+  }, [isVisible]);
+
+  useEffect(() => {
+    if (status === 'spinning') {
+      // 持续旋转
+      const animation = Animated.loop(
+        Animated.timing(rotateAnim, {
+          toValue: 1,
+          duration: 800,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      );
+      animation.start();
+      return () => animation.stop();
+    } else if (status === 'done') {
+      // 重置旋转角度为 0
+      rotateAnim.setValue(0);
+    }
+  }, [status]);
+
+  const rotateValue = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
 
   return (
     <Animated.View
       style={[
-        styles.dot,
+        styles.stepItem,
         {
-          opacity: opacityAnim.current,
-          backgroundColor: color,
+          opacity: fadeAnim,
+          transform: [{ translateX: slideAnim }],
+          borderBottomColor: `${theme.primary}1A`,
         },
       ]}
-    />
+    >
+      {/* 步骤图标 */}
+      <View style={[styles.stepIcon, { borderColor: status === 'done' ? `${theme.success}66` : `${theme.primary}66` }]}>
+        {status === 'pending' && (
+          <FontAwesome6 name="circle" size={10} color={theme.primary} />
+        )}
+        {status === 'spinning' && (
+          <Animated.View
+            style={{
+              width: 16,
+              height: 16,
+              borderRadius: 8,
+              borderWidth: 2,
+              borderColor: theme.primary,
+              borderTopColor: 'transparent',
+              transform: [{ rotate: rotateValue }],
+            }}
+          />
+        )}
+        {status === 'done' && (
+          <FontAwesome6 name="check" size={10} color={theme.success} />
+        )}
+      </View>
+
+      {/* 步骤文本 */}
+      <ThemedText variant="body" color={theme.textSecondary} style={styles.stepText}>
+        {step.text}
+      </ThemedText>
+    </Animated.View>
   );
 }
 
@@ -224,66 +404,134 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 9999,
   },
-  content: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pulseContainer: {
-    position: 'relative',
-    width: 160,
-    height: 160,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  pulseRing: {
+  overlay: {
     position: 'absolute',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    borderWidth: 2,
-    backgroundColor: 'transparent',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(5, 30, 60, 0.82)',
   },
-  iconContainer: {
-    width: 100,
-    height: 100,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  iconGradient: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    justifyContent: 'center',
+  loadingCard: {
+    width: '90%',
+    maxWidth: 340,
+    borderRadius: 20,
+    padding: 40,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.35,
+    shadowRadius: 60,
+    elevation: 20,
+    borderWidth: 1,
+    overflow: 'hidden',
   },
-  textContainer: {
-    marginTop: 40,
+  topBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 4,
+    overflow: 'hidden',
+  },
+  shimmerBar: {
+    width: 100,
+    height: '100%',
+  },
+  orbitSpinner: {
+    width: 72,
+    height: 72,
+    marginBottom: 28,
+    position: 'relative',
+  },
+  ring: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 36,
+    borderWidth: 3,
+    borderColor: 'transparent',
+    borderTopColor: 'transparent',
+  },
+  ring2: {
+    top: 10,
+    left: 10,
+    right: 10,
+    bottom: 10,
+    borderRadius: 26,
+    borderWidth: 3,
+    borderColor: 'transparent',
+    borderRightColor: 'transparent',
+  },
+  ring3: {
+    top: 20,
+    left: 20,
+    right: 20,
+    bottom: 20,
+    borderRadius: 16,
+    borderWidth: 3,
+    borderColor: 'transparent',
+    borderBottomColor: 'transparent',
+  },
+  centerDot: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  loadingText: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  dotsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  dot: {
+  centerDotInner: {
     width: 10,
     height: 10,
     borderRadius: 5,
   },
-  appName: {
-    marginTop: 20,
+  loadingTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 10,
+    letterSpacing: 0.3,
+  },
+  stepsContainer: {
+    width: '100%',
+    marginTop: 18,
+    marginBottom: 20,
+  },
+  stepItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+  },
+  stepIcon: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  stepText: {
     fontSize: 14,
-    opacity: 0.7,
+    flex: 1,
+  },
+  progressBarContainer: {
+    width: '100%',
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  appName: {
+    marginTop: 15,
   },
 });
