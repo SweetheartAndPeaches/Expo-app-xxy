@@ -45,8 +45,12 @@ export default function WebViewScreen() {
   const [showBackHint, setShowBackHint] = useState(false);
   const backPressTimeout = useRef<NodeJS.Timeout | null>(null);
   const retryTimeout = useRef<NodeJS.Timeout | null>(null);
+  const loadingTimeout = useRef<NodeJS.Timeout | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const maxRetry = 3;
+  
+  // 超时时间设置（15 秒）
+  const LOADING_TIMEOUT = 15000;
   
   // 获取重试延迟时间（指数退避，最大 5 秒）
   const getRetryDelay = useCallback((count: number) => {
@@ -103,6 +107,9 @@ export default function WebViewScreen() {
         if (retryTimeout.current) {
           clearTimeout(retryTimeout.current);
         }
+        if (loadingTimeout.current) {
+          clearTimeout(loadingTimeout.current);
+        }
       };
     }
   }, [handleBackPress]);
@@ -117,10 +124,28 @@ export default function WebViewScreen() {
     setLoading(true);
     setError(null);
     setErrorCode(null);
-  }, []);
+    
+    // 设置超时检测
+    if (loadingTimeout.current) {
+      clearTimeout(loadingTimeout.current);
+    }
+    
+    loadingTimeout.current = setTimeout(() => {
+      if (loading) {
+        setLoading(false);
+        setErrorCode(-8); // ERR_CONNECTION_TIMED_OUT
+        setError('连接超时，服务器响应时间过长，请检查网络连接或稍后重试');
+      }
+    }, LOADING_TIMEOUT);
+  }, [loading, LOADING_TIMEOUT]);
 
   const handleLoadEnd = useCallback(() => {
     setLoading(false);
+    // 清除超时定时器
+    if (loadingTimeout.current) {
+      clearTimeout(loadingTimeout.current);
+      loadingTimeout.current = null;
+    }
     // 重置重试计数
     setRetryCount(0);
   }, []);
@@ -129,6 +154,12 @@ export default function WebViewScreen() {
   const handleError = useCallback((syntheticEvent: any) => {
     const { nativeEvent } = syntheticEvent;
     setLoading(false);
+    
+    // 清除超时定时器
+    if (loadingTimeout.current) {
+      clearTimeout(loadingTimeout.current);
+      loadingTimeout.current = null;
+    }
     
     const errorCode = nativeEvent.code || -1;
     const errorDesc = nativeEvent.description || '加载失败';
@@ -140,6 +171,8 @@ export default function WebViewScreen() {
     
     if (errorCode === -6) {
       errorMessage = '无法连接到服务器，请检查网络或稍后重试';
+    } else if (errorCode === -8) {
+      errorMessage = '连接超时，服务器响应时间过长，请检查网络连接或稍后重试';
     } else if (errorCode === -2) {
       errorMessage = '页面不存在或已移除';
     } else if (errorCode === -1) {
@@ -157,6 +190,10 @@ export default function WebViewScreen() {
     if (retryTimeout.current) {
       clearTimeout(retryTimeout.current);
       retryTimeout.current = null;
+    }
+    if (loadingTimeout.current) {
+      clearTimeout(loadingTimeout.current);
+      loadingTimeout.current = null;
     }
     
     setError(null);

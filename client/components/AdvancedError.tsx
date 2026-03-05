@@ -47,6 +47,9 @@ export function AdvancedError({
     if (errorCode === -6 || errorDescription?.includes('ERR_CONNECTION_REFUSED')) {
       return 'blocked';
     }
+    if (errorCode === -8 || errorDescription?.includes('TIMEOUT') || errorDescription?.includes('timeout')) {
+      return 'network';
+    }
     if (errorCode === -2 || errorDescription?.includes('not found')) {
       return 'notfound';
     }
