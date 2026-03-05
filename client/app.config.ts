@@ -1,6 +1,6 @@
 import { ExpoConfig, ConfigContext } from 'expo/config';
 
-const appName = process.env.COZE_PROJECT_NAME || process.env.EXPO_PUBLIC_COZE_PROJECT_NAME || '应用';
+const appName = process.env.COZE_PROJECT_NAME || process.env.EXPO_PUBLIC_COZE_PROJECT_NAME || '蜂享钱包';
 const projectId = process.env.COZE_PROJECT_ID || process.env.EXPO_PUBLIC_COZE_PROJECT_ID;
 const slugAppName = projectId ? `app${projectId}` : 'myapp';
 
@@ -49,22 +49,22 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       [
         "expo-image-picker",
         {
-          "photosPermission": `允许网页预览App访问您的相册，以便您上传或保存图片。`,
-          "cameraPermission": `允许网页预览App使用您的相机，以便您直接拍摄照片上传。`,
-          "microphonePermission": `允许网页预览App访问您的麦克风，以便您拍摄带有声音的视频。`
+          "photosPermission": `允许蜂享钱包访问您的相册，以便您上传或保存图片。`,
+          "cameraPermission": `允许蜂享钱包使用您的相机，以便您直接拍摄照片上传。`,
+          "microphonePermission": `允许蜂享钱包访问您的麦克风，以便您拍摄带有声音的视频。`
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": `网页预览App需要访问您的位置以提供周边服务及导航功能。`
+          "locationWhenInUsePermission": `蜂享钱包需要访问您的位置以提供周边服务及导航功能。`
         }
       ],
       [
         "expo-camera",
         {
-          "cameraPermission": `网页预览App需要访问相机以拍摄照片和视频。`,
-          "microphonePermission": `网页预览App需要访问麦克风以录制视频声音。`,
+          "cameraPermission": `蜂享钱包需要访问相机以拍摄照片和视频。`,
+          "microphonePermission": `蜂享钱包需要访问麦克风以录制视频声音。`,
           "recordAudioAndroid": true
         }
       ]
