@@ -6,6 +6,14 @@ export const createStyles = (theme: Theme) => {
     container: {
       flex: 1,
     },
+    networkStatusBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: Spacing.sm,
+      paddingHorizontal: Spacing.md,
+      zIndex: 1000,
+    },
     webView: {
       flex: 1,
       backgroundColor: 'transparent',

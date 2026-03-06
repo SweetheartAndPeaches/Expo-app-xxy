@@ -1,6 +1,7 @@
 import React, { useRef, useCallback, useState, useMemo } from 'react';
 import { View, TouchableOpacity, Text, BackHandler, Platform, Linking } from 'react-native';
 import { WebView, WebViewNavigation } from 'react-native-webview';
+import NetInfo from '@react-native-community/netinfo';
 import { useTheme } from '@/hooks/useTheme';
 import { Screen } from '@/components/Screen';
 import { ThemedView } from '@/components/ThemedView';
@@ -47,6 +48,8 @@ export default function WebViewScreen() {
   const retryTimeout = useRef<NodeJS.Timeout | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const maxRetry = 3;
+  const [isConnected, setIsConnected] = useState(true);
+  const [networkType, setNetworkType] = useState<string>('unknown');
   
   // 获取重试延迟时间（指数退避，最大 5 秒）
   const getRetryDelay = useCallback((count: number) => {
@@ -63,6 +66,21 @@ export default function WebViewScreen() {
   const handleContactSupport = useCallback(() => {
     // 这里可以跳转到支持页面或打开邮件应用
     alert('如需帮助，请联系技术支持');
+  }, []);
+
+  // 处理重新加载
+  const handleReload = useCallback(() => {
+    // 清理定时器
+    if (retryTimeout.current) {
+      clearTimeout(retryTimeout.current);
+      retryTimeout.current = null;
+    }
+    
+    setError(null);
+    setErrorCode(null);
+    setLoading(true);
+    setRetryCount(0);
+    webViewRef.current?.reload();
   }, []);
 
   // 处理返回键（仅原生平台）
@@ -107,6 +125,36 @@ export default function WebViewScreen() {
     }
   }, [handleBackPress]);
 
+  // 监听网络状态变化
+  React.useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      const connected = state.isConnected ?? false;
+      const connectionType = state.type;
+
+      setIsConnected(connected);
+      setNetworkType(connectionType);
+
+      // 网络恢复时，自动重新加载
+      if (connected && !loading && error) {
+        console.log('Network restored, reloading...');
+        handleReload();
+      }
+    });
+
+    // 初始网络状态检查
+    NetInfo.fetch().then((state) => {
+      const connected = state.isConnected ?? true; // 默认为 true，避免阻塞
+      const connectionType = state.type;
+
+      setIsConnected(connected);
+      setNetworkType(connectionType);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [handleReload, loading, error]);
+
   // 处理导航变化（仅原生平台）
   const handleNavigationStateChange = useCallback((navState: WebViewNavigation) => {
     setCanGoBack(navState.canGoBack);
@@ -148,8 +196,13 @@ export default function WebViewScreen() {
       errorMessage = '服务器错误，请稍后重试';
     }
     
+    // 如果当前离线，显示离线提示
+    if (!isConnected) {
+      errorMessage = '当前网络不可用，请检查网络连接后重试';
+    }
+    
     setError(errorMessage);
-  }, []);
+  }, [isConnected]);
 
   // 处理 HTTP 错误（如 404, 500）
   const handleHttpError = useCallback((syntheticEvent: any) => {
@@ -167,19 +220,6 @@ export default function WebViewScreen() {
     
     setError(errorMessage);
     setErrorCode(statusCode);
-  }, []);
-  const handleReload = useCallback(() => {
-    // 清理定时器
-    if (retryTimeout.current) {
-      clearTimeout(retryTimeout.current);
-      retryTimeout.current = null;
-    }
-    
-    setError(null);
-    setErrorCode(null);
-    setLoading(true);
-    setRetryCount(0);
-    webViewRef.current?.reload();
   }, []);
 
   // 自动重试
@@ -229,6 +269,16 @@ export default function WebViewScreen() {
       statusBarStyle={isDark ? 'light' : 'dark'}
     >
       <View style={styles.container}>
+        {/* 网络状态提示 */}
+        {!isConnected && (
+          <View style={[styles.networkStatusBanner, { backgroundColor: theme.error }]}>
+            <FontAwesome6 name="wifi" size={14} color="#FFFFFF" />
+            <ThemedText variant="caption" style={{ color: '#FFFFFF', marginLeft: 8 }}>
+              网络不可用，请检查网络连接
+            </ThemedText>
+          </View>
+        )}
+
         {/* 错误提示 */}
         {error && (
           <AdvancedError
