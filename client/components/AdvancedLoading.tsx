@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/refs */
-import React, { useEffect, useRef, useState, memo } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, Animated, Easing, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from './ThemedText';
@@ -27,8 +27,274 @@ interface AdvancedLoadingProps {
   appName?: string;
 }
 
-// 加载步骤项组件（在 AdvancedLoading 之前定义）
-const LoadingStepItem = memo(function LoadingStepItem({
+export function AdvancedLoading({ appName }: AdvancedLoadingProps) {
+  const { theme } = useTheme();
+
+  // 轨道旋转动画
+  const ring1Rotate = useRef(new Animated.Value(0)).current;
+  const ring2Rotate = useRef(new Animated.Value(0)).current;
+  const ring3Rotate = useRef(new Animated.Value(0)).current;
+  
+  // 中心点脉冲动画
+  const centerDotScale = useRef(new Animated.Value(1)).current;
+  const centerDotOpacity = useRef(new Animated.Value(1)).current;
+
+  // Shimmer 动画
+  const shimmerTranslate = useRef(new Animated.Value(-width)).current;
+
+  // 步骤状态
+  const [stepStatuses, setStepStatuses] = useState<Record<string, StepStatus>>({});
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    // 轨道圆环1：顺时针旋转，速度较快
+    const ring1Animation = Animated.loop(
+      Animated.timing(ring1Rotate, {
+        toValue: 1,
+        duration: 1200,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+
+    // 轨道圆环2：逆时针旋转，速度中等
+    const ring2Animation = Animated.loop(
+      Animated.timing(ring2Rotate, {
+        toValue: -1,
+        duration: 1800,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+
+    // 轨道圆环3：顺时针旋转，速度较慢
+    const ring3Animation = Animated.loop(
+      Animated.timing(ring3Rotate, {
+        toValue: 1,
+        duration: 2400,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+
+    // 中心点脉冲动画
+    const centerDotAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(centerDotScale, {
+            toValue: 1.4,
+            duration: 600,
+            easing: Easing.out(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(centerDotOpacity, {
+            toValue: 0.6,
+            duration: 600,
+            easing: Easing.out(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(centerDotScale, {
+            toValue: 1,
+            duration: 600,
+            easing: Easing.in(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(centerDotOpacity, {
+            toValue: 1,
+            duration: 600,
+            easing: Easing.in(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ]),
+      ])
+    );
+
+    // Shimmer 动画
+    const shimmerAnimation = Animated.loop(
+      Animated.timing(shimmerTranslate, {
+        toValue: width * 2,
+        duration: 2000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+
+    ring1Animation.start();
+    ring2Animation.start();
+    ring3Animation.start();
+    centerDotAnimation.start();
+    shimmerAnimation.start();
+
+    // 逐步显示加载步骤
+    const timers: NodeJS.Timeout[] = [];
+    
+    LOADING_STEPS.forEach((step, index) => {
+      const timer = setTimeout(() => {
+        // 当前步骤变为 spinning
+        setStepStatuses(prev => ({
+          ...prev,
+          [step.id]: 'spinning',
+        }));
+        
+        // 更新进度条
+        setProgress((index + 1) * 25);
+        
+        // 前一个步骤变为 done
+        if (index > 0) {
+          const prevStep = LOADING_STEPS[index - 1];
+          setStepStatuses(prev => ({
+            ...prev,
+            [prevStep.id]: 'done',
+          }));
+        }
+      }, step.delay);
+      
+      timers.push(timer);
+    });
+
+    return () => {
+      ring1Animation.stop();
+      ring2Animation.stop();
+      ring3Animation.stop();
+      centerDotAnimation.stop();
+      shimmerAnimation.stop();
+      timers.forEach(timer => clearTimeout(timer));
+    };
+  }, []);
+
+  const ring1RotateValue = ring1Rotate.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  const ring2RotateValue = ring2Rotate.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '-360deg'],
+  });
+
+  const ring3RotateValue = ring3Rotate.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  return (
+    <View style={styles.container}>
+      {/* 半透明深色背景 */}
+      <View style={styles.overlay} />
+      
+      {/* 加载卡片 */}
+      <View style={[styles.loadingCard, { backgroundColor: theme.backgroundRoot }]}>
+        {/* 顶部渐变闪烁效果 */}
+        <View style={styles.topBar}>
+          <Animated.View
+            style={[
+              styles.shimmerBar,
+              {
+                backgroundColor: theme.primary,
+                transform: [{ translateX: shimmerTranslate }],
+              },
+            ]}
+          />
+        </View>
+
+        {/* 轨道旋转动画 */}
+        <View style={styles.orbitSpinner}>
+          {/* 圆环1 */}
+          <Animated.View
+            style={[
+              styles.ring,
+              { borderColor: theme.primary },
+              {
+                transform: [{ rotate: ring1RotateValue }],
+              },
+            ]}
+          />
+          
+          {/* 圆环2 */}
+          <Animated.View
+            style={[
+              styles.ring,
+              styles.ring2,
+              { borderColor: theme.accent || theme.primary },
+              {
+                transform: [{ rotate: ring2RotateValue }],
+              },
+            ]}
+          />
+          
+          {/* 圆环3 */}
+          <Animated.View
+            style={[
+              styles.ring,
+              styles.ring3,
+              { borderColor: theme.primary },
+              {
+                transform: [{ rotate: ring3RotateValue }],
+              },
+            ]}
+          />
+          
+          {/* 中心点 */}
+          <View style={styles.centerDot}>
+            <Animated.View
+              style={[
+                styles.centerDotInner,
+                {
+                  backgroundColor: theme.primary,
+                  transform: [{ scale: centerDotScale }],
+                  opacity: centerDotOpacity,
+                },
+              ]}
+            />
+          </View>
+        </View>
+
+        {/* 加载标题 */}
+        <ThemedText variant="h3" color={theme.primary} style={styles.loadingTitle}>
+          正在加载...
+        </ThemedText>
+
+        {/* 加载步骤列表 */}
+        <View style={styles.stepsContainer}>
+          {LOADING_STEPS.map((step, index) => (
+            <LoadingStepItem
+              key={step.id}
+              step={step}
+              status={stepStatuses[step.id] || 'pending'}
+              theme={theme}
+              isVisible={stepStatuses[step.id] !== undefined}
+            />
+          ))}
+        </View>
+
+        {/* 进度条 */}
+        <View style={[styles.progressBarContainer, { backgroundColor: `${theme.primary}15` }]}>
+          <Animated.View
+            style={[
+              styles.progressBarFill,
+              {
+                width: `${progress}%`,
+                backgroundColor: theme.primary,
+              },
+            ]}
+          />
+        </View>
+
+        {/* 应用名称 */}
+        {appName && (
+          <ThemedText variant="caption" color={theme.textMuted} style={styles.appName}>
+            {appName}
+          </ThemedText>
+        )}
+      </View>
+    </View>
+  );
+}
+
+// 加载步骤项组件
+function LoadingStepItem({
   step,
   status,
   theme,
@@ -127,222 +393,7 @@ const LoadingStepItem = memo(function LoadingStepItem({
       </ThemedText>
     </Animated.View>
   );
-}, (prevProps, nextProps) => {
-  // 自定义比较函数，只在状态或可见性改变时重新渲染
-  return (
-    prevProps.status === nextProps.status &&
-    prevProps.isVisible === nextProps.isVisible &&
-    prevProps.step.id === nextProps.step.id
-  );
-});
-
-export const AdvancedLoading = memo(function AdvancedLoading({ appName }: AdvancedLoadingProps) {
-  const { theme } = useTheme();
-
-  // 轨道旋转动画（仅保留两个轨道，减少性能开销）
-  const ring1Rotate = useRef(new Animated.Value(0)).current;
-  const ring2Rotate = useRef(new Animated.Value(0)).current;
-
-  // 中心点脉冲动画
-  const centerDotScale = useRef(new Animated.Value(1)).current;
-  const centerDotOpacity = useRef(new Animated.Value(1)).current;
-
-  // 步骤状态
-  const [stepStatuses, setStepStatuses] = useState<Record<string, StepStatus>>({});
-  const [progress, setProgress] = useState(0);
-
-  useEffect(() => {
-    // 轨道圆环1：顺时针旋转，速度较快
-    const ring1Animation = Animated.loop(
-      Animated.timing(ring1Rotate, {
-        toValue: 1,
-        duration: 1200,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    );
-
-    // 轨道圆环2：逆时针旋转，速度中等
-    const ring2Animation = Animated.loop(
-      Animated.timing(ring2Rotate, {
-        toValue: -1,
-        duration: 1800,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    );
-
-    // 中心点脉冲动画（优化持续时间，减少动画帧）
-    const centerDotAnimation = Animated.loop(
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(centerDotScale, {
-            toValue: 1.4,
-            duration: 800,
-            easing: Easing.out(Easing.ease),
-            useNativeDriver: true,
-          }),
-          Animated.timing(centerDotOpacity, {
-            toValue: 0.6,
-            duration: 800,
-            easing: Easing.out(Easing.ease),
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.parallel([
-          Animated.timing(centerDotScale, {
-            toValue: 1,
-            duration: 800,
-            easing: Easing.in(Easing.ease),
-            useNativeDriver: true,
-          }),
-          Animated.timing(centerDotOpacity, {
-            toValue: 1,
-            duration: 800,
-            easing: Easing.in(Easing.ease),
-            useNativeDriver: true,
-          }),
-        ]),
-      ])
-    );
-
-    ring1Animation.start();
-    ring2Animation.start();
-    centerDotAnimation.start();
-
-    // 逐步显示加载步骤
-    const timers: NodeJS.Timeout[] = [];
-
-    LOADING_STEPS.forEach((step, index) => {
-      const timer = setTimeout(() => {
-        // 当前步骤变为 spinning
-        setStepStatuses(prev => ({
-          ...prev,
-          [step.id]: 'spinning',
-        }));
-
-        // 更新进度条
-        setProgress((index + 1) * 25);
-
-        // 前一个步骤变为 done
-        if (index > 0) {
-          const prevStep = LOADING_STEPS[index - 1];
-          setStepStatuses(prev => ({
-            ...prev,
-            [prevStep.id]: 'done',
-          }));
-        }
-      }, step.delay);
-
-      timers.push(timer);
-    });
-
-    return () => {
-      ring1Animation.stop();
-      ring2Animation.stop();
-      centerDotAnimation.stop();
-      timers.forEach(timer => clearTimeout(timer));
-    };
-  }, []);
-
-  const ring1RotateValue = ring1Rotate.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
-
-  const ring2RotateValue = ring2Rotate.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '-360deg'],
-  });
-
-  return (
-    <View style={styles.container}>
-      {/* 半透明深色背景 */}
-      <View style={styles.overlay} />
-
-      {/* 加载卡片 */}
-      <View style={[styles.loadingCard, { backgroundColor: theme.backgroundRoot }]}>
-        {/* 轨道旋转动画 */}
-        <View style={styles.orbitSpinner}>
-          {/* 圆环1 */}
-          <Animated.View
-            style={[
-              styles.ring,
-              { borderColor: theme.primary },
-              {
-                transform: [{ rotate: ring1RotateValue }],
-              },
-            ]}
-          />
-
-          {/* 圆环2 */}
-          <Animated.View
-            style={[
-              styles.ring,
-              styles.ring2,
-              { borderColor: theme.accent || theme.primary },
-              {
-                transform: [{ rotate: ring2RotateValue }],
-              },
-            ]}
-          />
-          
-          {/* 中心点 */}
-          <View style={styles.centerDot}>
-            <Animated.View
-              style={[
-                styles.centerDotInner,
-                {
-                  backgroundColor: theme.primary,
-                  transform: [{ scale: centerDotScale }],
-                  opacity: centerDotOpacity,
-                },
-              ]}
-            />
-          </View>
-        </View>
-
-        {/* 加载标题 */}
-        <ThemedText variant="h3" color={theme.primary} style={styles.loadingTitle}>
-          正在加载...
-        </ThemedText>
-
-        {/* 加载步骤列表 */}
-        <View style={styles.stepsContainer}>
-          {LOADING_STEPS.map((step, index) => (
-            <LoadingStepItem
-              key={step.id}
-              step={step}
-              status={stepStatuses[step.id] || 'pending'}
-              theme={theme}
-              isVisible={stepStatuses[step.id] !== undefined}
-            />
-          ))}
-        </View>
-
-        {/* 进度条 */}
-        <View style={[styles.progressBarContainer, { backgroundColor: `${theme.primary}15` }]}>
-          <Animated.View
-            style={[
-              styles.progressBarFill,
-              {
-                width: `${progress}%`,
-                backgroundColor: theme.primary,
-              },
-            ]}
-          />
-        </View>
-
-        {/* 应用名称 */}
-        {appName && (
-          <ThemedText variant="caption" color={theme.textMuted} style={styles.appName}>
-            {appName}
-          </ThemedText>
-        )}
-      </View>
-    </View>
-  );
-});
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -375,6 +426,19 @@ const styles = StyleSheet.create({
     shadowRadius: 60,
     elevation: 20,
     borderWidth: 1,
+    overflow: 'hidden',
+  },
+  topBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 4,
+    overflow: 'hidden',
+  },
+  shimmerBar: {
+    width: 100,
+    height: '100%',
   },
   orbitSpinner: {
     width: 72,
@@ -402,6 +466,16 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: 'transparent',
     borderRightColor: 'transparent',
+  },
+  ring3: {
+    top: 20,
+    left: 20,
+    right: 20,
+    bottom: 20,
+    borderRadius: 16,
+    borderWidth: 3,
+    borderColor: 'transparent',
+    borderBottomColor: 'transparent',
   },
   centerDot: {
     position: 'absolute',

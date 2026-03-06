@@ -1,7 +1,6 @@
 import React, { useRef, useCallback, useState, useMemo } from 'react';
 import { View, TouchableOpacity, Text, BackHandler, Platform, Linking } from 'react-native';
 import { WebView, WebViewNavigation } from 'react-native-webview';
-import NetInfo from '@react-native-community/netinfo';
 import { useTheme } from '@/hooks/useTheme';
 import { Screen } from '@/components/Screen';
 import { ThemedView } from '@/components/ThemedView';
@@ -14,7 +13,7 @@ import { createStyles } from './styles';
 // 默认配置（可通过环境变量或配置文件覆盖）
 const DEFAULT_CONFIG = {
   url: process.env.EXPO_PUBLIC_WEBVIEW_URL || 'https://gamepay-app-rouge.vercel.app',
-  title: process.env.EXPO_PUBLIC_APP_TITLE || '蜂享钱包',
+  title: process.env.EXPO_PUBLIC_APP_TITLE || 'WebView',
 };
 
 // Web 平台的 iframe 组件
@@ -48,8 +47,6 @@ export default function WebViewScreen() {
   const retryTimeout = useRef<NodeJS.Timeout | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const maxRetry = 3;
-  const [isConnected, setIsConnected] = useState(true);
-  const [networkType, setNetworkType] = useState<string>('unknown');
   
   // 获取重试延迟时间（指数退避，最大 5 秒）
   const getRetryDelay = useCallback((count: number) => {
@@ -94,52 +91,11 @@ export default function WebViewScreen() {
     return false;
   }, [canGoBack, showBackHint]);
 
-  // 处理重新加载
-  const handleReload = useCallback(() => {
-    // 清理定时器
-    if (retryTimeout.current) {
-      clearTimeout(retryTimeout.current);
-      retryTimeout.current = null;
-    }
-
-    setError(null);
-    setErrorCode(null);
-    setLoading(true);
-    setRetryCount(0);
-    webViewRef.current?.reload();
-  }, []);
-
   React.useEffect(() => {
-    // 监听网络状态变化
-    const unsubscribe = NetInfo.addEventListener((state) => {
-      const isConnected = state.isConnected ?? false;
-      const connectionType = state.type;
-
-      setIsConnected(isConnected);
-      setNetworkType(connectionType);
-
-      // 网络恢复时，自动重新加载
-      if (isConnected && !loading && error) {
-        console.log('Network restored, reloading...');
-        handleReload();
-      }
-    });
-
-    // 初始网络状态检查
-    NetInfo.fetch().then((state) => {
-      const isConnected = state.isConnected ?? true; // 默认为 true，避免阻塞
-      const connectionType = state.type;
-
-      setIsConnected(isConnected);
-      setNetworkType(connectionType);
-    });
-
-    // 返回键监听（仅原生平台）
     if (Platform.OS !== 'web') {
       const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
       return () => {
         backHandler.remove();
-        unsubscribe();
         // 清理定时器
         if (backPressTimeout.current) {
           clearTimeout(backPressTimeout.current);
@@ -149,11 +105,7 @@ export default function WebViewScreen() {
         }
       };
     }
-
-    return () => {
-      unsubscribe();
-    };
-  }, [handleBackPress, loading, error]);
+  }, [handleBackPress]);
 
   // 处理导航变化（仅原生平台）
   const handleNavigationStateChange = useCallback((navState: WebViewNavigation) => {
@@ -177,15 +129,15 @@ export default function WebViewScreen() {
   const handleError = useCallback((syntheticEvent: any) => {
     const { nativeEvent } = syntheticEvent;
     setLoading(false);
-
+    
     const errorCode = nativeEvent.code || -1;
     const errorDesc = nativeEvent.description || '加载失败';
-
+    
     setErrorCode(errorCode);
-
+    
     // 根据错误代码提供更友好的提示
     let errorMessage = '加载失败，请检查网络连接';
-
+    
     if (errorCode === -6) {
       errorMessage = '无法连接到服务器，请检查网络或稍后重试';
     } else if (errorCode === -2) {
@@ -195,14 +147,9 @@ export default function WebViewScreen() {
     } else if (errorCode === -3) {
       errorMessage = '服务器错误，请稍后重试';
     }
-
-    // 如果当前离线，显示离线提示
-    if (!isConnected) {
-      errorMessage = '当前网络不可用，请检查网络连接后重试';
-    }
-
+    
     setError(errorMessage);
-  }, [isConnected]);
+  }, []);
 
   // 处理 HTTP 错误（如 404, 500）
   const handleHttpError = useCallback((syntheticEvent: any) => {
@@ -220,6 +167,19 @@ export default function WebViewScreen() {
     
     setError(errorMessage);
     setErrorCode(statusCode);
+  }, []);
+  const handleReload = useCallback(() => {
+    // 清理定时器
+    if (retryTimeout.current) {
+      clearTimeout(retryTimeout.current);
+      retryTimeout.current = null;
+    }
+    
+    setError(null);
+    setErrorCode(null);
+    setLoading(true);
+    setRetryCount(0);
+    webViewRef.current?.reload();
   }, []);
 
   // 自动重试
@@ -267,19 +227,8 @@ export default function WebViewScreen() {
     <Screen
       backgroundColor={theme.backgroundRoot}
       statusBarStyle={isDark ? 'light' : 'dark'}
-      safeAreaEdges={['top', 'left', 'right']} // 移除 bottom，让 WebView 可以延伸到屏幕底部
     >
       <View style={styles.container}>
-        {/* 网络状态提示 */}
-        {!isConnected && (
-          <View style={[styles.networkStatusBanner, { backgroundColor: theme.error }]}>
-            <FontAwesome6 name="wifi" size={14} color="#FFFFFF" />
-            <ThemedText variant="caption" style={{ color: '#FFFFFF', marginLeft: 8 }}>
-              网络不可用，请检查网络连接
-            </ThemedText>
-          </View>
-        )}
-
         {/* 错误提示 */}
         {error && (
           <AdvancedError
@@ -310,18 +259,8 @@ export default function WebViewScreen() {
           mediaPlaybackRequiresUserAction={false}
           androidLayerType="hardware"
           cacheEnabled={true}
-          cacheMode="LOAD_CACHE_ELSE_NETWORK"
           mixedContentMode="compatibility"
           originWhitelist={['*']}
-          incognito={false}
-          saveFormDataDisabled={false}
-          thirdPartyCookiesEnabled={true}
-          bounces={false}
-          overScrollMode="never"
-          // iOS 适配：禁用自动调整内容内边距
-          automaticallyAdjustContentInsets={false}
-          contentInset={{ top: 0, left: 0, bottom: 0, right: 0 }}
-          contentInsetAdjustmentBehavior="never"
           renderLoading={() => (
             <AdvancedLoading appName={DEFAULT_CONFIG.title} />
           )}
@@ -330,58 +269,6 @@ export default function WebViewScreen() {
             console.log('WebView Error:', errorDomain, errorCode, errorDesc);
             return <View style={{ width: 0, height: 0 }} />;
           }} // 使用自定义错误页面，禁用 WebView 原生错误页面
-          injectedJavaScript={`
-            (function() {
-              // 优化 WebView 内部性能和视口适配
-              
-              // 1. 修复视口高度，让 100vh 不包括系统导航栏
-              const setFullHeight = function() {
-                const vh = window.innerHeight * 0.01;
-                document.documentElement.style.setProperty('--vh', vh + 'px');
-              };
-              
-              setFullHeight();
-              window.addEventListener('resize', setFullHeight);
-              window.addEventListener('orientationchange', setFullHeight);
-              
-              // 2. 修复底部导航栏被遮挡问题
-              document.body.style.height = '100%';
-              document.body.style.minHeight = '100%';
-              
-              // 3. 延迟加载非关键资源
-              if ('IntersectionObserver' in window) {
-                const lazyLoadObserver = new IntersectionObserver((entries) => {
-                  entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                      const img = entry.target;
-                      if (img.dataset.src) {
-                        img.src = img.dataset.src;
-                        lazyLoadObserver.unobserve(img);
-                      }
-                    }
-                  });
-                });
-                
-                document.querySelectorAll('img[data-src]').forEach(img => {
-                  lazyLoadObserver.observe(img);
-                });
-              }
-              
-              // 4. 减少重排和重绘
-              const style = document.createElement('style');
-              style.textContent = \`
-                * { will-change: transform; }
-                img, video { will-change: transform, opacity; }
-                /* 修复底部导航栏 */
-                body { 
-                  height: calc(var(--vh, 1vh) * 100);
-                  min-height: calc(var(--vh, 1vh) * 100);
-                }
-              \`;
-              document.head.appendChild(style);
-            })();
-            true;
-          `}
         />
 
         {/* 返回键提示（仅在用户第一次按下返回键时显示 2 秒） */}
