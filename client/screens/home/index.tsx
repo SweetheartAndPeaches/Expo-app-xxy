@@ -151,7 +151,23 @@ export default function WebViewScreen() {
     setError(errorMessage);
   }, []);
 
-  // 重新加载（仅原生平台）
+  // 处理 HTTP 错误（如 404, 500）
+  const handleHttpError = useCallback((syntheticEvent: any) => {
+    const { nativeEvent } = syntheticEvent;
+    setLoading(false);
+    
+    const statusCode = nativeEvent.statusCode;
+    let errorMessage = `服务器返回错误 (${statusCode})`;
+    
+    if (statusCode >= 400 && statusCode < 500) {
+      errorMessage = '页面不存在或已被删除';
+    } else if (statusCode >= 500) {
+      errorMessage = '服务器错误，请稍后重试';
+    }
+    
+    setError(errorMessage);
+    setErrorCode(statusCode);
+  }, []);
   const handleReload = useCallback(() => {
     // 清理定时器
     if (retryTimeout.current) {
@@ -232,6 +248,7 @@ export default function WebViewScreen() {
           onLoadStart={handleLoadStart}
           onLoadEnd={handleLoadEnd}
           onError={handleError}
+          onHttpError={handleHttpError}
           onNavigationStateChange={handleNavigationStateChange}
           startInLoadingState={true}
           javaScriptEnabled={true}
@@ -240,17 +257,18 @@ export default function WebViewScreen() {
           allowsFullscreenVideo={true}
           allowsInlineMediaPlayback={true}
           mediaPlaybackRequiresUserAction={false}
-          // Android 特定配置
           androidLayerType="hardware"
           cacheEnabled={true}
-          // 安全配置
           mixedContentMode="compatibility"
           originWhitelist={['*']}
-          // 自定义 User-Agent（可选，用于伪装成浏览器）
-          // userAgent="Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
           renderLoading={() => (
             <AdvancedLoading appName={DEFAULT_CONFIG.title} />
           )}
+          renderError={(errorDomain, errorCode, errorDesc) => {
+            // 记录错误信息但不显示任何内容（使用自定义错误页面）
+            console.log('WebView Error:', errorDomain, errorCode, errorDesc);
+            return <View style={{ width: 0, height: 0 }} />;
+          }} // 使用自定义错误页面，禁用 WebView 原生错误页面
         />
 
         {/* 返回键提示（仅在用户第一次按下返回键时显示 2 秒） */}
