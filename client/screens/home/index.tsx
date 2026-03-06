@@ -267,6 +267,7 @@ export default function WebViewScreen() {
     <Screen
       backgroundColor={theme.backgroundRoot}
       statusBarStyle={isDark ? 'light' : 'dark'}
+      safeAreaEdges={['top', 'left', 'right']} // 移除 bottom，让 WebView 可以延伸到屏幕底部
     >
       <View style={styles.container}>
         {/* 网络状态提示 */}
@@ -317,6 +318,10 @@ export default function WebViewScreen() {
           thirdPartyCookiesEnabled={true}
           bounces={false}
           overScrollMode="never"
+          // iOS 适配：禁用自动调整内容内边距
+          automaticallyAdjustContentInsets={false}
+          contentInset={{ top: 0, left: 0, bottom: 0, right: 0 }}
+          contentInsetAdjustmentBehavior="never"
           renderLoading={() => (
             <AdvancedLoading appName={DEFAULT_CONFIG.title} />
           )}
@@ -327,8 +332,23 @@ export default function WebViewScreen() {
           }} // 使用自定义错误页面，禁用 WebView 原生错误页面
           injectedJavaScript={`
             (function() {
-              // 优化 WebView 内部性能
-              // 1. 延迟加载非关键资源
+              // 优化 WebView 内部性能和视口适配
+              
+              // 1. 修复视口高度，让 100vh 不包括系统导航栏
+              const setFullHeight = function() {
+                const vh = window.innerHeight * 0.01;
+                document.documentElement.style.setProperty('--vh', vh + 'px');
+              };
+              
+              setFullHeight();
+              window.addEventListener('resize', setFullHeight);
+              window.addEventListener('orientationchange', setFullHeight);
+              
+              // 2. 修复底部导航栏被遮挡问题
+              document.body.style.height = '100%';
+              document.body.style.minHeight = '100%';
+              
+              // 3. 延迟加载非关键资源
               if ('IntersectionObserver' in window) {
                 const lazyLoadObserver = new IntersectionObserver((entries) => {
                   entries.forEach(entry => {
@@ -347,11 +367,16 @@ export default function WebViewScreen() {
                 });
               }
               
-              // 2. 减少重排和重绘
+              // 4. 减少重排和重绘
               const style = document.createElement('style');
               style.textContent = \`
                 * { will-change: transform; }
                 img, video { will-change: transform, opacity; }
+                /* 修复底部导航栏 */
+                body { 
+                  height: calc(var(--vh, 1vh) * 100);
+                  min-height: calc(var(--vh, 1vh) * 100);
+                }
               \`;
               document.head.appendChild(style);
             })();
