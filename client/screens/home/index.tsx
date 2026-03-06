@@ -13,7 +13,7 @@ import { createStyles } from './styles';
 // 默认配置（可通过环境变量或配置文件覆盖）
 const DEFAULT_CONFIG = {
   url: process.env.EXPO_PUBLIC_WEBVIEW_URL || 'https://gamepay-app-rouge.vercel.app',
-  title: process.env.EXPO_PUBLIC_APP_TITLE || 'WebView',
+  title: process.env.EXPO_PUBLIC_APP_TITLE || '蜂享钱包',
 };
 
 // Web 平台的 iframe 组件
