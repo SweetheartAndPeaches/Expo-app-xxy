@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/refs */
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, memo } from 'react';
 import { View, StyleSheet, Animated, Dimensions } from 'react-native';
 import { ThemedText } from './ThemedText';
 import { useTheme } from '@/hooks/useTheme';
@@ -16,7 +16,7 @@ interface AdvancedErrorProps {
   onContactSupport?: () => void;
 }
 
-export function AdvancedError({
+export const AdvancedError = memo(function AdvancedError({
   errorCode = -6,
   errorDescription = '无法连接到服务器',
   onRetry,
@@ -27,7 +27,7 @@ export function AdvancedError({
 
   // 地球旋转动画
   const globeRotate = useRef(new Animated.Value(0)).current;
-  
+
   // 信号波动动画
   const signalWave1 = useRef(new Animated.Value(0)).current;
   const signalWave2 = useRef(new Animated.Value(0)).current;
@@ -404,7 +404,13 @@ export function AdvancedError({
       </View>
     </View>
   );
-}
+}, (prevProps, nextProps) => {
+  // 自定义比较函数，只在错误代码或描述改变时重新渲染
+  return (
+    prevProps.errorCode === nextProps.errorCode &&
+    prevProps.errorDescription === nextProps.errorDescription
+  );
+});
 
 const styles = StyleSheet.create({
   container: {

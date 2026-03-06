@@ -32,5 +32,22 @@ export const createStyles = (theme: Theme) => {
       marginHorizontal: Spacing.xl,
       borderRadius: BorderRadius.full,
     },
+    networkStatusBanner: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: Spacing.xs,
+      paddingHorizontal: Spacing.md,
+      zIndex: 1000,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+    },
   });
 };
