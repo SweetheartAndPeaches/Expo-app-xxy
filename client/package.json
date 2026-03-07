@@ -16,11 +16,7 @@
   "jest": {
     "preset": "jest-expo"
   },
-  "pnpm": {
-    "patchedDependencies": {
-      "react-native-notification-listener@5.0.2": "../patches/react-native-notification-listener@5.0.2.patch"
-    }
-  },
+  "pnpm": {},
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
     "@expo/vector-icons": "^15.0.3",

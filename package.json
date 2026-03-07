@@ -17,8 +17,7 @@
       "esbuild": "0.27.2"
     },
     "patchedDependencies": {
-      "expo@54.0.33": "patches/expo@54.0.33.patch",
-      "react-native-notification-listener@5.0.2": "patches/react-native-notification-listener@5.0.2.patch"
+      "expo@54.0.33": "patches/expo@54.0.33.patch"
     }
   }
 }
