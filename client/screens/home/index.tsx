@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useState, useMemo } from 'react';
+import React, { useRef, useCallback, useState, useMemo, useEffect } from 'react';
 import { View, TouchableOpacity, Text, BackHandler, Platform, Linking, Alert } from 'react-native';
 import { WebView, WebViewNavigation } from 'react-native-webview';
 import NetInfo from '@react-native-community/netinfo';
@@ -9,6 +9,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { AdvancedLoading } from '@/components/AdvancedLoading';
 import { AdvancedError } from '@/components/AdvancedError';
 import PermissionGuideModal from '@/components/PermissionGuideModal';
+import NotificationDisplayModal from '@/components/NotificationDisplayModal';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { createStyles } from './styles';
 
@@ -63,6 +64,13 @@ export default function WebViewScreen() {
   const [networkType, setNetworkType] = useState<string>('unknown');
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [hasNotificationPermission, setHasNotificationPermission] = useState(false);
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [currentNotification, setCurrentNotification] = useState<{
+    title: string;
+    message?: string;
+    packageName?: string;
+    time?: Date;
+  } | null>(null);
   
   // 获取重试延迟时间（指数退避，最大 5 秒）
   const getRetryDelay = useCallback((count: number) => {
@@ -138,6 +146,41 @@ export default function WebViewScreen() {
       }
     }, 60000);
   }, [hasNotificationPermission, loading]);
+
+  // 处理收到通知
+  const handleNotificationReceived = useCallback((notification: any) => {
+    console.log('Received notification:', notification);
+
+    // 显示通知内容
+    setCurrentNotification({
+      title: notification.title || '新消息',
+      message: notification.text || notification.bigText || notification.messageText,
+      packageName: notification.appName || notification.packageName,
+      time: new Date(notification.postTime || Date.now()),
+    });
+    setShowNotificationModal(true);
+  }, []);
+
+  // 处理通知显示模态框关闭
+  const handleCloseNotificationModal = useCallback(() => {
+    setShowNotificationModal(false);
+  }, []);
+
+  // 设置通知监听器（仅在有权限时）
+  useEffect(() => {
+    if (Platform.OS === 'web' || !NotificationListener || !hasNotificationPermission) {
+      return;
+    }
+
+    const unsubscribe = NotificationListener.addListener(
+      'NotificationReceived',
+      handleNotificationReceived
+    );
+
+    return () => {
+      unsubscribe.remove();
+    };
+  }, [hasNotificationPermission, handleNotificationReceived]);
 
   // 处理返回键（仅原生平台）
   const handleBackPress = useCallback(() => {
@@ -402,6 +445,13 @@ export default function WebViewScreen() {
           visible={showPermissionModal}
           onRequestLater={handleRequestPermissionLater}
           onRequestNow={handleRequestPermissionNow}
+        />
+
+        {/* 通知显示模态框 */}
+        <NotificationDisplayModal
+          visible={showNotificationModal}
+          notification={currentNotification}
+          onClose={handleCloseNotificationModal}
         />
       </View>
     </Screen>
