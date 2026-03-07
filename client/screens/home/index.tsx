@@ -148,7 +148,26 @@ export default function WebViewScreen() {
   // 处理权限请求 - 立即授权
   const handleRequestPermissionNow = useCallback(() => {
     setShowPermissionModal(false);
-    openNotificationSettings();
+    
+    // 显示提示，告诉用户接下来要做什么
+    Alert.alert(
+      '即将打开设置',
+      '系统会跳转到"通知访问权限"页面。\n\n请在列表中找到"蜂享钱包"并打开开关。\n\n如果没有找到，请返回后再试一次。',
+      [
+        { text: '取消', style: 'cancel', onPress: () => {
+          // 用户取消，稍后再次提示
+          setTimeout(() => {
+            setShowPermissionModal(true);
+          }, 3000);
+        }},
+        { 
+          text: '我知道了', 
+          onPress: () => {
+            openNotificationSettings();
+          }
+        }
+      ]
+    );
   }, [openNotificationSettings]);
 
   // 处理权限请求 - 稍后提醒

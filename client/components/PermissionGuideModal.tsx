@@ -93,7 +93,7 @@ export default function PermissionGuideModal({
     tipContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: `${theme.accent}15`,
+      backgroundColor: `${theme.primary}15`,
       padding: 12,
       borderRadius: 8,
       marginBottom: 24,
@@ -106,19 +106,16 @@ export default function PermissionGuideModal({
       color: theme.textSecondary,
       flex: 1,
     },
-    buttonContainer: {
-      gap: 12,
-    },
     primaryButton: {
-      paddingVertical: 16,
-      paddingHorizontal: 24,
-      borderRadius: 12,
-      alignItems: 'center',
+      width: '100%',
     },
     primaryButtonText: {
       fontSize: 16,
       fontWeight: '600',
       color: '#FFFFFF',
+    },
+    buttonContainer: {
+      gap: 12,
     },
     secondaryButton: {
       paddingVertical: 14,
@@ -162,12 +159,12 @@ export default function PermissionGuideModal({
 
           {/* 标题 */}
           <ThemedText style={styles.title}>
-            提升使用体验
+            需要通知访问权限
           </ThemedText>
 
           {/* 描述 */}
           <Text style={styles.description}>
-            为了让您获得更流畅、更智能的使用体验，我们需要您授权一项系统权限。
+            为了帮您智能识别和管理重要消息，我们需要您授权"通知访问权限"。
           </Text>
 
           {/* 功能列表 */}
@@ -204,30 +201,35 @@ export default function PermissionGuideModal({
           {/* 提示信息 */}
           <View style={styles.tipContainer}>
             <FontAwesome6
-              name="lightbulb"
+              name="shield-halved"
               size={14}
-              color={theme.accent}
+              color={theme.primary}
               style={styles.tipIcon}
             />
             <Text style={styles.tipText}>
-              开启后，您可以在系统设置中随时关闭此权限
+              此权限仅用于读取通知内容，不会修改或删除您的任何通知。您可随时在设置中关闭。
             </Text>
           </View>
 
           {/* 按钮 */}
           <View style={styles.buttonContainer}>
-            <LinearGradient
-              colors={[theme.primary, theme.accent]}
+            <TouchableOpacity
               style={styles.primaryButton}
+              onPress={onRequestNow}
+              activeOpacity={0.8}
             >
-              <TouchableOpacity onPress={onRequestNow} style={{ flex: 1, alignItems: 'center' }}>
-                <Text style={styles.primaryButtonText}>立即开启</Text>
-              </TouchableOpacity>
-            </LinearGradient>
+              <LinearGradient
+                colors={[theme.primary, theme.accent]}
+                style={{ width: '100%', borderRadius: 12, paddingVertical: 16, paddingHorizontal: 24, alignItems: 'center' }}
+              >
+                <Text style={styles.primaryButtonText}>去开启权限</Text>
+              </LinearGradient>
+            </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.secondaryButton}
               onPress={onRequestLater}
+              activeOpacity={0.7}
             >
               <Text style={styles.secondaryButtonText}>稍后提醒</Text>
             </TouchableOpacity>
