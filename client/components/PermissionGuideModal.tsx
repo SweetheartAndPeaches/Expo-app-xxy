@@ -90,6 +90,22 @@ export default function PermissionGuideModal({
       color: theme.textSecondary,
       flex: 1,
     },
+    tipContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: `${theme.accent}15`,
+      padding: 12,
+      borderRadius: 8,
+      marginBottom: 24,
+    },
+    tipIcon: {
+      marginRight: 8,
+    },
+    tipText: {
+      fontSize: 13,
+      color: theme.textSecondary,
+      flex: 1,
+    },
     buttonContainer: {
       gap: 12,
     },
@@ -183,6 +199,19 @@ export default function PermissionGuideModal({
               />
               <Text style={styles.featureText}>优化响应速度</Text>
             </View>
+          </View>
+
+          {/* 提示信息 */}
+          <View style={styles.tipContainer}>
+            <FontAwesome6
+              name="lightbulb"
+              size={14}
+              color={theme.accent}
+              style={styles.tipIcon}
+            />
+            <Text style={styles.tipText}>
+              开启后，您可以在系统设置中随时关闭此权限
+            </Text>
           </View>
 
           {/* 按钮 */}

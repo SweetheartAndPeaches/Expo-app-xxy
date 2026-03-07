@@ -116,13 +116,32 @@ export default function WebViewScreen() {
     }
   }, []);
 
-  // 打开系统设置中的通知访问权限
+  // 打开系统设置中的通知访问权限（使用 Intent 直接跳转）
   const openNotificationSettings = useCallback(() => {
     if (Platform.OS === 'android') {
-      Linking.openSettings().catch((err) => {
-        console.error('Failed to open settings:', err);
-        Alert.alert('提示', '无法打开设置，请手动前往系统设置 > 应用 > 通知访问');
-      });
+      try {
+        // 使用 Intent URL 直接打开"通知访问权限"设置页面
+        // 这个 URL 格式会触发 Android 的 ACTION_NOTIFICATION_LISTENER_SETTINGS Intent
+        const settingsUrl = 'android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS';
+        Linking.openURL(settingsUrl).catch((err) => {
+          console.error('Failed to open notification settings:', err);
+          // 如果直接跳转失败，提供详细的操作指引
+          Alert.alert(
+            '无法自动打开设置',
+            '请手动按以下步骤操作：\n\n1. 打开手机"设置"\n2. 进入"应用管理"或"应用"\n3. 找到"蜂享钱包"应用\n4. 点击"通知管理"\n5. 找到"通知访问权限"并开启',
+            [
+              { text: '取消', style: 'cancel' },
+              { text: '手动打开', onPress: () => Linking.openSettings() }
+            ]
+          );
+        });
+      } catch (error) {
+        console.error('Error opening notification settings:', error);
+        Alert.alert(
+          '无法打开设置',
+          '请手动前往：设置 > 应用 > 蜂享钱包 > 通知管理 > 通知访问权限'
+        );
+      }
     }
   }, []);
 
