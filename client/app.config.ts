@@ -27,7 +27,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       "package": `com.anonymous.x${projectId || '0'}`,
       "permissions": [
         "android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
-      ]
+      ],
+      "allowBackup": false
     },
     "web": {
       "bundler": "metro",
