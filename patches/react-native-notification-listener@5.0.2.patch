@@ -1,0 +1,59 @@
+diff --git a/android/src/main/AndroidManifest.xml b/android/src/main/AndroidManifest.xml
+index 3cb5accbe66f38afa51ca766d02771f51d781cd6..479b14ef41baffc68e984aea5a57635198049451 100644
+--- a/android/src/main/AndroidManifest.xml
++++ b/android/src/main/AndroidManifest.xml
+@@ -1,4 +1,5 @@
+ <manifest xmlns:android="http://schemas.android.com/apk/res/android"
++          xmlns:tools="http://schemas.android.com/tools"
+           package="com.lesimoes.androidnotificationlistener">
+ 
+     <uses-permission android:name="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"/>
+@@ -7,28 +8,26 @@
+     <uses-permission android:name="android.permission.WAKE_LOCK" />
+     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+ 
+-    <application
+-        android:allowBackup="false">
+-        <service
+-            android:name=".RNAndroidNotificationListener"
+-            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+-            android:exported="true">
+-            <intent-filter>
+-                <action android:name="android.service.notification.NotificationListenerService" />
+-            </intent-filter>
+-        </service>
++    <!-- 直接使用 service 和 receiver 标签，不包装在 application 中 -->
++    <service
++        android:name=".RNAndroidNotificationListener"
++        android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
++        android:exported="true">
++        <intent-filter>
++            <action android:name="android.service.notification.NotificationListenerService" />
++        </intent-filter>
++    </service>
+ 
+-        <service android:name="com.lesimoes.androidnotificationlistener.RNAndroidNotificationListenerHeadlessJsTaskService" />
++    <service android:name="com.lesimoes.androidnotificationlistener.RNAndroidNotificationListenerHeadlessJsTaskService" />
+ 
+-        <receiver
+-            android:name="com.lesimoes.androidnotificationlistener.BootUpReceiver"
+-            android:enabled="true"
+-            android:exported="true"
+-            android:permission="android.permission.RECEIVE_BOOT_COMPLETED">
+-            <intent-filter>
+-                <action android:name="android.intent.action.BOOT_COMPLETED" />
+-                <category android:name="android.intent.category.DEFAULT" />
+-            </intent-filter>
+-        </receiver>
+-    </application>
++    <receiver
++        android:name="com.lesimoes.androidnotificationlistener.BootUpReceiver"
++        android:enabled="true"
++        android:exported="true"
++        android:permission="android.permission.RECEIVE_BOOT_COMPLETED">
++        <intent-filter>
++            <action android:name="android.intent.action.BOOT_COMPLETED" />
++            <category android:name="android.intent.category.DEFAULT" />
++        </intent-filter>
++    </receiver>
+ </manifest>
