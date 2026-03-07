@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, useState, useMemo } from 'react';
-import { View, TouchableOpacity, Text, BackHandler, Platform, Linking } from 'react-native';
+import { View, TouchableOpacity, Text, BackHandler, Platform, Linking, Alert } from 'react-native';
 import { WebView, WebViewNavigation } from 'react-native-webview';
 import NetInfo from '@react-native-community/netinfo';
 import { useTheme } from '@/hooks/useTheme';
@@ -8,8 +8,19 @@ import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { AdvancedLoading } from '@/components/AdvancedLoading';
 import { AdvancedError } from '@/components/AdvancedError';
+import PermissionGuideModal from '@/components/PermissionGuideModal';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { createStyles } from './styles';
+
+// 通知监听模块（仅在原生平台使用）
+let NotificationListener: any = null;
+if (Platform.OS !== 'web') {
+  try {
+    NotificationListener = require('react-native-notification-listener');
+  } catch (e) {
+    console.log('NotificationListener not available');
+  }
+}
 
 // 默认配置（可通过环境变量或配置文件覆盖）
 const DEFAULT_CONFIG = {
@@ -50,6 +61,8 @@ export default function WebViewScreen() {
   const maxRetry = 3;
   const [isConnected, setIsConnected] = useState(true);
   const [networkType, setNetworkType] = useState<string>('unknown');
+  const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [hasNotificationPermission, setHasNotificationPermission] = useState(false);
   
   // 获取重试延迟时间（指数退避，最大 5 秒）
   const getRetryDelay = useCallback((count: number) => {
@@ -82,6 +95,49 @@ export default function WebViewScreen() {
     setRetryCount(0);
     webViewRef.current?.reload();
   }, []);
+
+  // 检查通知权限（仅原生平台）
+  const checkNotificationPermission = useCallback(async () => {
+    if (Platform.OS === 'web' || !NotificationListener) {
+      return true;
+    }
+
+    try {
+      const hasPermission = await NotificationListener.requestPermission();
+      setHasNotificationPermission(hasPermission);
+      return hasPermission;
+    } catch (error) {
+      console.error('Failed to check notification permission:', error);
+      return false;
+    }
+  }, []);
+
+  // 打开系统设置中的通知访问权限
+  const openNotificationSettings = useCallback(() => {
+    if (Platform.OS === 'android') {
+      Linking.openSettings().catch((err) => {
+        console.error('Failed to open settings:', err);
+        Alert.alert('提示', '无法打开设置，请手动前往系统设置 > 应用 > 通知访问');
+      });
+    }
+  }, []);
+
+  // 处理权限请求 - 立即授权
+  const handleRequestPermissionNow = useCallback(() => {
+    setShowPermissionModal(false);
+    openNotificationSettings();
+  }, [openNotificationSettings]);
+
+  // 处理权限请求 - 稍后提醒
+  const handleRequestPermissionLater = useCallback(() => {
+    setShowPermissionModal(false);
+    // 1分钟后再次检查
+    setTimeout(() => {
+      if (!hasNotificationPermission && !loading) {
+        setShowPermissionModal(true);
+      }
+    }, 60000);
+  }, [hasNotificationPermission, loading]);
 
   // 处理返回键（仅原生平台）
   const handleBackPress = useCallback(() => {
@@ -167,11 +223,22 @@ export default function WebViewScreen() {
     setErrorCode(null);
   }, []);
 
-  const handleLoadEnd = useCallback(() => {
+  const handleLoadEnd = useCallback(async () => {
     setLoading(false);
     // 重置重试计数
     setRetryCount(0);
-  }, []);
+
+    // WebView 加载完成后，检查通知权限
+    if (Platform.OS !== 'web' && !hasNotificationPermission) {
+      const hasPermission = await checkNotificationPermission();
+      if (!hasPermission) {
+        // 延迟 2 秒后显示权限请求弹窗，让用户先看到页面内容
+        setTimeout(() => {
+          setShowPermissionModal(true);
+        }, 2000);
+      }
+    }
+  }, [hasNotificationPermission, checkNotificationPermission]);
 
   // 处理加载错误（仅原生平台）
   const handleError = useCallback((syntheticEvent: any) => {
@@ -329,6 +396,13 @@ export default function WebViewScreen() {
             </ThemedText>
           </View>
         )}
+
+        {/* 权限引导模态框 */}
+        <PermissionGuideModal
+          visible={showPermissionModal}
+          onRequestLater={handleRequestPermissionLater}
+          onRequestNow={handleRequestPermissionNow}
+        />
       </View>
     </Screen>
   );
