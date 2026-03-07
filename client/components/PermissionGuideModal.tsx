@@ -17,12 +17,14 @@ interface PermissionGuideModalProps {
   visible: boolean;
   onRequestLater: () => void;
   onRequestNow: () => void;
+  onRecheck?: () => void;
 }
 
 export default function PermissionGuideModal({
   visible,
   onRequestLater,
   onRequestNow,
+  onRecheck,
 }: PermissionGuideModalProps) {
   const { theme, isDark } = useTheme();
 
@@ -164,7 +166,7 @@ export default function PermissionGuideModal({
 
           {/* 描述 */}
           <Text style={styles.description}>
-            为了帮您智能识别和管理重要消息，我们需要您授权"通知访问权限"。
+            为了帮您智能识别和管理重要消息，我们需要您授权&quot;通知访问权限&quot;。
           </Text>
 
           {/* 功能列表 */}
@@ -225,6 +227,18 @@ export default function PermissionGuideModal({
                 <Text style={styles.primaryButtonText}>去开启权限</Text>
               </LinearGradient>
             </TouchableOpacity>
+
+            {onRecheck && (
+              <TouchableOpacity
+                style={[styles.secondaryButton, { borderColor: theme.primary }]}
+                onPress={onRecheck}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: 15, fontWeight: '500', color: theme.primary }}>
+                  已开启，重新检查
+                </Text>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity
               style={styles.secondaryButton}

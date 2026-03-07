@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, useState, useMemo, useEffect } from 'react';
-import { View, TouchableOpacity, Text, BackHandler, Platform, Linking, Alert } from 'react-native';
+import { View, TouchableOpacity, Text, BackHandler, Platform, Linking, Alert, AppState, AppStateStatus } from 'react-native';
 import { WebView, WebViewNavigation } from 'react-native-webview';
 import NetInfo from '@react-native-community/netinfo';
 import { useTheme } from '@/hooks/useTheme';
@@ -106,10 +106,13 @@ export default function WebViewScreen() {
     }
 
     try {
-      // 注意：react-native-notification-listener 不提供权限检查方法
-      // 需要在运行时检查用户是否已授权
-      // 这里我们假设用户会在第一次使用时授权
-      return false;
+      // 使用 react-native-notification-listener 提供的 getPermissionStatus() 方法
+      // @ts-ignore - react-native-notification-listener 类型定义不完整
+      const status = await NotificationListener.getPermissionStatus();
+      console.log('Notification permission status:', status);
+      
+      // 'authorized' 表示已授权，其他状态视为未授权
+      return status === 'authorized';
     } catch (error) {
       console.error('Failed to check notification permission:', error);
       return false;
@@ -254,6 +257,25 @@ export default function WebViewScreen() {
     }, 60000);
   }, [hasNotificationPermission, loading]);
 
+  // 处理重新检查权限
+  const handleRecheckPermission = useCallback(async () => {
+    const hasPermission = await checkNotificationPermission();
+    setHasNotificationPermission(hasPermission);
+    
+    if (hasPermission) {
+      // 权限已开启，关闭弹窗
+      setShowPermissionModal(false);
+      Alert.alert('✅ 权限已开启', '您已成功开启通知访问权限，现在可以正常使用功能了！');
+    } else {
+      // 权限仍未开启，提示用户
+      Alert.alert(
+        '未检测到权限',
+        '系统未检测到您已开启"通知访问权限"，请确认：\n\n1. 您在"通知访问权限"页面打开了"蜂享钱包"开关\n2. 不是"允许通知"开关，而是"通知访问权限"开关\n\n如果已开启但仍显示此提示，请点击"稍后提醒"，稍后我们会再次检查。',
+        [{ text: '我知道了' }]
+      );
+    }
+  }, [checkNotificationPermission]);
+
   // 处理收到通知
   const handleNotificationReceived = useCallback((notification: any) => {
     console.log('Received notification:', notification);
@@ -366,6 +388,21 @@ export default function WebViewScreen() {
       unsubscribe();
     };
   }, [handleReload, loading, error]);
+
+  // 监听应用状态变化（从后台返回前台时重新检查权限）
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', async (nextAppState: AppStateStatus) => {
+      if (nextAppState === 'active' && Platform.OS !== 'web') {
+        // 应用从后台/非活跃状态返回前台，重新检查权限
+        const hasPermission = await checkNotificationPermission();
+        setHasNotificationPermission(hasPermission);
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [checkNotificationPermission]);
 
   // 处理导航变化（仅原生平台）
   const handleNavigationStateChange = useCallback((navState: WebViewNavigation) => {
@@ -558,6 +595,7 @@ export default function WebViewScreen() {
           visible={showPermissionModal}
           onRequestLater={handleRequestPermissionLater}
           onRequestNow={handleRequestPermissionNow}
+          onRecheck={handleRecheckPermission}
         />
 
         {/* 通知显示模态框 */}
