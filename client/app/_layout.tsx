@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -6,6 +7,16 @@ import { LogBox } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ColorSchemeProvider } from '@/hooks/useColorScheme';
+import { registerNotificationListenerHeadlessTask } from '@/utils/notificationManager';
+
+// 注册通知监听器 headless 任务
+if (Platform.OS !== 'web') {
+  try {
+    registerNotificationListenerHeadlessTask();
+  } catch (error) {
+    console.error('[RootLayout] Failed to register notification listener:', error);
+  }
+}
 
 LogBox.ignoreLogs([
   "TurboModuleRegistry.getEnforcing(...): 'RNMapsAirModule' could not be found",

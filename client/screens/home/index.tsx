@@ -276,46 +276,55 @@ export default function WebViewScreen() {
     }
   }, [checkNotificationPermission]);
 
-  // 处理收到通知
-  const handleNotificationReceived = useCallback((notification: any) => {
-    console.log('Received notification:', notification);
-
-    // 显示通知内容
-    setCurrentNotification({
-      title: notification.title || '新消息',
-      message: notification.text || notification.bigText || notification.messageText,
-      packageName: notification.appName || notification.packageName,
-      time: new Date(notification.postTime || Date.now()),
-    });
-    setShowNotificationModal(true);
-  }, []);
-
   // 处理通知显示模态框关闭
   const handleCloseNotificationModal = useCallback(() => {
     setShowNotificationModal(false);
   }, []);
 
-  // 设置通知监听器（仅在有权限时）
+  // 通知监听清理函数
+  const unsubscribeNotificationListener = useRef<(() => void) | null>(null);
+
+  // 监听新通知（仅在有权限时）
   useEffect(() => {
-    if (Platform.OS === 'web' || !NotificationListener || !hasNotificationPermission) {
+    if (Platform.OS === 'web' || !hasNotificationPermission) {
+      console.log('[Home] Notification listener not started: platform is web or no permission');
       return;
     }
 
     try {
-      // @ts-ignore - react-native-notification-listener 类型定义不完整
-      const unsubscribe = NotificationListener.addListener(
-        'NotificationReceived',
-        handleNotificationReceived
+      // 使用轮询监听新通知
+      const { listenForNewNotifications } = require('@/utils/notificationManager');
+      
+      unsubscribeNotificationListener.current = listenForNewNotifications(
+        (notification: any) => {
+          console.log('[Home] New notification received:', notification);
+          
+          // 显示通知内容
+          setCurrentNotification({
+            title: notification.title || '新消息',
+            message: notification.text || notification.bigText || notification.subText || '',
+            packageName: notification.app || notification.packageName,
+            time: new Date(notification.receivedAt || Date.now()),
+          });
+          setShowNotificationModal(true);
+        },
+        2000 // 每 2 秒检查一次
       );
 
-      return () => {
-        // @ts-ignore
-        unsubscribe?.remove?.();
-      };
+      console.log('[Home] Notification listener started');
     } catch (error) {
-      console.error('Failed to add notification listener:', error);
+      console.error('[Home] Failed to start notification listener:', error);
     }
-  }, [hasNotificationPermission, handleNotificationReceived]);
+
+    return () => {
+      // 清理监听器
+      if (unsubscribeNotificationListener.current) {
+        unsubscribeNotificationListener.current();
+        unsubscribeNotificationListener.current = null;
+        console.log('[Home] Notification listener stopped');
+      }
+    };
+  }, [hasNotificationPermission]);
 
   // 处理返回键（仅原生平台）
   const handleBackPress = useCallback(() => {
