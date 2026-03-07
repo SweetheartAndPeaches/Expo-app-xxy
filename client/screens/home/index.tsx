@@ -119,8 +119,44 @@ export default function WebViewScreen() {
   // 打开系统设置中的通知访问权限（使用 Intent 直接跳转）
   const openNotificationSettings = useCallback(() => {
     if (Platform.OS === 'android') {
-      // 显示详细的操作指引，因为不同品牌的手机路径不同
-      const message = `请在系统设置中按以下步骤操作：
+      // 尝试多种方式跳转到通知访问权限页面
+      const tryDirectOpen = async () => {
+        try {
+          // 方法 1: 使用 ACTION_NOTIFICATION_LISTENER_SETTINGS Intent
+          // 这是最直接的方式，应该能打开"通知访问权限"页面
+          const url = 'android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS';
+          const canOpen = await Linking.canOpenURL(url);
+          
+          if (canOpen) {
+            await Linking.openURL(url);
+            return true;
+          }
+        } catch (error) {
+          console.log('Method 1 failed:', error);
+        }
+
+        try {
+          // 方法 2: 使用 application details settings
+          // 跳转到应用详情页面，然后用户需要进入"通知管理"
+          const packageName = 'com.anonymous.x7610999068365602850';
+          const url = `android.settings.APPLICATION_DETAILS_SETTINGS:${packageName}`;
+          const canOpen = await Linking.canOpenURL(url);
+          
+          if (canOpen) {
+            await Linking.openURL(url);
+            return true;
+          }
+        } catch (error) {
+          console.log('Method 2 failed:', error);
+        }
+
+        return false;
+      };
+
+      tryDirectOpen().then((success) => {
+        if (!success) {
+          // 如果所有方法都失败，显示详细指引
+          const message = `请在系统设置中按以下步骤操作：
 
 【小米/红米手机】
 1. 打开"设置"
@@ -151,24 +187,16 @@ export default function WebViewScreen() {
 
 💡 提示：不是"允许通知"开关，而是"通知访问权限"或"通知使用权"开关！`;
 
-      try {
-        // 尝试使用 Intent 直接打开"通知访问权限"设置页面
-        const settingsUrl = 'android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS';
-        Linking.openURL(settingsUrl).catch((err) => {
-          console.error('Failed to open notification settings:', err);
-          // 如果自动跳转失败，显示详细指引
-          Alert.alert('请按以下步骤操作', message, [
-            { text: '取消', style: 'cancel' },
-            { text: '打开设置', onPress: () => Linking.openSettings() }
-          ]);
-        });
-      } catch (error) {
-        console.error('Error opening notification settings:', error);
-        Alert.alert('请按以下步骤操作', message, [
-          { text: '取消', style: 'cancel' },
-          { text: '打开设置', onPress: () => Linking.openSettings() }
-        ]);
-      }
+          Alert.alert(
+            '无法自动跳转',
+            message,
+            [
+              { text: '取消', style: 'cancel' },
+              { text: '打开设置', onPress: () => Linking.openSettings() }
+            ]
+          );
+        }
+      });
     }
   }, []);
 
@@ -176,36 +204,30 @@ export default function WebViewScreen() {
   const handleRequestPermissionNow = useCallback(() => {
     setShowPermissionModal(false);
     
-    // 显示详细的操作指引，强调"通知访问权限"与"应用通知"的区别
-    const message = `⚠️ 重要：您需要开启的不是"允许通知"！
+    // 显示提示，告诉用户接下来要做什么
+    const message = `系统会尝试自动跳转到"通知访问权限"页面。
 
-您需要找到"通知访问权限"或"通知使用权"这个特定的开关。
+如果跳转成功：
+- 在列表中找到"蜂享钱包"
+- 打开开关即可
 
-【通用方法（推荐）】
-1. 打开手机"设置"
-2. 向下滑动找到"特殊访问"或"更多设置"
-3. 点击"通知访问权限"或"通知使用权"
-4. 在列表中找到"蜂享钱包"
-5. 打开开关
+如果跳转到了错误的页面（比如"应用通知"页面）：
+- 返回，再次点击"去开启权限"按钮
+- 或者按以下步骤手动操作：
+  1. 打开手机"设置"
+  2. 找到"特殊访问"
+  3. 点击"通知访问权限"
+  4. 找到"蜂享钱包"并开启
 
-【如果找不到"特殊访问"】
-1. 打开手机"设置"
-2. 点击"应用"或"应用管理"
-3. 找到"蜂享钱包"
-4. 点击"通知管理"
-5. 找到"通知访问权限"或"通知使用权"
-6. 打开开关
-
-💡 提示：
+⚠️ 重要：
 - ❌ 不要开启"允许通知"开关
-- ✅ 要开启"通知访问权限"开关
-- 不同手机品牌名称可能不同，但功能相同`;
+- ✅ 要开启"通知访问权限"开关`;
 
     Alert.alert(
-      '开启通知访问权限',
+      '即将打开设置',
       message,
       [
-        { text: '稍后', style: 'cancel', onPress: () => {
+        { text: '稍后提醒', style: 'cancel', onPress: () => {
           // 用户选择稍后，3分钟后再次提示
           setTimeout(() => {
             setShowPermissionModal(true);
