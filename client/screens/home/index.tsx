@@ -102,6 +102,7 @@ export default function WebViewScreen() {
   // 检查通知权限（仅原生平台）
   const checkNotificationPermission = useCallback(async () => {
     if (Platform.OS === 'web' || !NotificationListener) {
+      console.log('[checkNotificationPermission] Platform is web or NotificationListener is null, returning true');
       return true;
     }
 
@@ -109,12 +110,14 @@ export default function WebViewScreen() {
       // 使用 react-native-notification-listener 提供的 getPermissionStatus() 方法
       // @ts-ignore - react-native-notification-listener 类型定义不完整
       const status = await NotificationListener.getPermissionStatus();
-      console.log('Notification permission status:', status);
+      console.log('[checkNotificationPermission] Permission status:', status);
       
       // 'authorized' 表示已授权，其他状态视为未授权
-      return status === 'authorized';
+      const hasPermission = status === 'authorized';
+      console.log('[checkNotificationPermission] Has permission:', hasPermission);
+      return hasPermission;
     } catch (error) {
-      console.error('Failed to check notification permission:', error);
+      console.error('[checkNotificationPermission] Failed to check permission:', error);
       return false;
     }
   }, []);
@@ -259,7 +262,11 @@ export default function WebViewScreen() {
 
   // 处理重新检查权限
   const handleRecheckPermission = useCallback(async () => {
+    console.log('[handleRecheckPermission] Starting permission recheck...');
+    
     const hasPermission = await checkNotificationPermission();
+    console.log('[handleRecheckPermission] Permission check result:', hasPermission);
+    
     setHasNotificationPermission(hasPermission);
     
     if (hasPermission) {
@@ -267,14 +274,62 @@ export default function WebViewScreen() {
       setShowPermissionModal(false);
       Alert.alert('✅ 权限已开启', '您已成功开启通知访问权限，现在可以正常使用功能了！');
     } else {
-      // 权限仍未开启，提示用户
-      Alert.alert(
-        '未检测到权限',
-        '系统未检测到您已开启"通知访问权限"，请确认：\n\n1. 您在"通知访问权限"页面打开了"蜂享钱包"开关\n2. 不是"允许通知"开关，而是"通知访问权限"开关\n\n如果已开启但仍显示此提示，请点击"稍后提醒"，稍后我们会再次检查。',
-        [{ text: '我知道了' }]
-      );
+      // 权限仍未开启，显示详细的调试信息
+      const debugInfo = `权限检测结果：未授权
+
+调试信息：
+- 权限状态：未授权
+- 监听器状态：${unsubscribeNotificationListener.current ? '运行中' : '未启动'}
+
+可能的原因：
+1. 您在"通知访问权限"页面开启了"蜂享钱包"开关
+2. 但系统需要时间更新权限状态（可能需要 10-30 秒）
+3. 或者您开启的是"允许通知"而不是"通知访问权限"
+
+建议操作：
+1. 返回"通知访问权限"页面
+2. 确认"蜂享钱包"的开关是打开的
+3. 等待 10-30 秒
+4. 再次点击"已开启，重新检查"
+5. 如果仍然失败，请尝试：
+   - 关闭开关，再重新打开
+   - 或者重启应用`;
+
+      Alert.alert('未检测到权限', debugInfo, [{ text: '我知道了' }]);
     }
   }, [checkNotificationPermission]);
+
+  // 调试：显示当前状态
+  const handleDebug = useCallback(async () => {
+    try {
+      // @ts-ignore
+      const status = await NotificationListener?.getPermissionStatus?.();
+      
+      const notifications = await (await import('@/utils/notificationManager')).getNotifications();
+      
+      const debugInfo = `📱 调试信息
+
+权限状态：
+- hasNotificationPermission: ${hasNotificationPermission}
+- getPermissionStatus(): ${status || 'unknown'}
+
+监听器状态：
+- 轮询监听器：${unsubscribeNotificationListener.current ? '✅ 运行中' : '❌ 未启动'}
+
+通知数据：
+- 已存储通知数量：${notifications.length}
+- 最新通知：${notifications.length > 0 ? JSON.stringify(notifications[0], null, 2) : '无'}
+
+应用状态：
+- Platform: ${Platform.OS}
+- Loading: ${loading}`;
+
+      Alert.alert('调试信息', debugInfo, [{ text: '关闭' }]);
+    } catch (error) {
+      console.error('[Debug] Error:', error);
+      Alert.alert('调试错误', `获取调试信息失败：${error}`);
+    }
+  }, [hasNotificationPermission, loading]);
 
   // 处理通知显示模态框关闭
   const handleCloseNotificationModal = useCallback(() => {
@@ -605,6 +660,7 @@ export default function WebViewScreen() {
           onRequestLater={handleRequestPermissionLater}
           onRequestNow={handleRequestPermissionNow}
           onRecheck={handleRecheckPermission}
+          onDebug={handleDebug}
         />
 
         {/* 通知显示模态框 */}
