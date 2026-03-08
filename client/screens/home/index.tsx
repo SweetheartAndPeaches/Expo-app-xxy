@@ -66,6 +66,7 @@ export default function WebViewScreen() {
     packageName?: string;
     time?: Date;
   } | null>(null);
+  const [forceStartListener, setForceStartListener] = useState(false); // 强制启动监听器
   
   // 获取重试延迟时间（指数退避，最大 5 秒）
   const getRetryDelay = useCallback((count: number) => {
@@ -329,7 +330,19 @@ export default function WebViewScreen() {
       console.error('[Debug] Error:', error);
       Alert.alert('调试错误', `获取调试信息失败：${error}`);
     }
-  }, [hasNotificationPermission, loading]);
+  }, [hasNotificationPermission, loading, forceStartListener]);
+
+  // 强制启动监听器
+  const handleForceStartListener = useCallback(() => {
+    console.log('[handleForceStartListener] Forcing listener to start');
+    setForceStartListener(true);
+    Alert.alert(
+      '✅ 监听器已强制启动',
+      '监听器已强制启动，现在会尝试监听通知。请用 QQ 发送一条消息测试。' + 
+      '\n\n如果还是收不到通知，请确认：\n1. 您已在"通知访问权限"页面开启"蜂享钱包"开关\n2. 应用在前台运行\n3. QQ 消息已出现在系统通知栏',
+      [{ text: '我知道了' }]
+    );
+  }, []);
 
   // 处理通知显示模态框关闭
   const handleCloseNotificationModal = useCallback(() => {
@@ -339,12 +352,20 @@ export default function WebViewScreen() {
   // 通知监听清理函数
   const unsubscribeNotificationListener = useRef<(() => void) | null>(null);
 
-  // 监听新通知（仅在有权限时）
+  // 监听新通知（仅在有权限时或强制启动时）
   useEffect(() => {
-    if (Platform.OS === 'web' || !hasNotificationPermission) {
-      console.log('[Home] Notification listener not started: platform is web or no permission');
+    if (Platform.OS === 'web') {
+      console.log('[Home] Notification listener not started: platform is web');
       return;
     }
+
+    // 只有在有权限或强制启动时才启动监听器
+    if (!hasNotificationPermission && !forceStartListener) {
+      console.log('[Home] Notification listener not started: no permission and not forced');
+      return;
+    }
+
+    console.log('[Home] Starting notification listener (permission:', hasNotificationPermission, ', forced:', forceStartListener, ')');
 
     try {
       // 使用轮询监听新通知
@@ -366,7 +387,7 @@ export default function WebViewScreen() {
         2000 // 每 2 秒检查一次
       );
 
-      console.log('[Home] Notification listener started');
+      console.log('[Home] Notification listener started successfully');
     } catch (error) {
       console.error('[Home] Failed to start notification listener:', error);
     }
@@ -379,7 +400,7 @@ export default function WebViewScreen() {
         console.log('[Home] Notification listener stopped');
       }
     };
-  }, [hasNotificationPermission]);
+  }, [hasNotificationPermission, forceStartListener]);
 
   // 处理返回键（仅原生平台）
   const handleBackPress = useCallback(() => {
@@ -661,6 +682,7 @@ export default function WebViewScreen() {
           onRequestNow={handleRequestPermissionNow}
           onRecheck={handleRecheckPermission}
           onDebug={handleDebug}
+          onForceStart={handleForceStartListener}
         />
 
         {/* 通知显示模态框 */}
