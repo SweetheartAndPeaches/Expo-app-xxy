@@ -20,6 +20,7 @@ interface PermissionGuideModalProps {
   onRecheck?: () => void;
   onDebug?: () => void;
   onForceStart?: () => void;
+  onTestPermission?: () => void;
 }
 
 export default function PermissionGuideModal({
@@ -29,6 +30,7 @@ export default function PermissionGuideModal({
   onRecheck,
   onDebug,
   onForceStart,
+  onTestPermission,
 }: PermissionGuideModalProps) {
   const { theme, isDark } = useTheme();
 
@@ -240,6 +242,18 @@ export default function PermissionGuideModal({
               >
                 <Text style={{ fontSize: 15, fontWeight: '500', color: theme.primary }}>
                   已开启，重新检查
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {onTestPermission && (
+              <TouchableOpacity
+                style={[styles.secondaryButton, { borderColor: '#4CAF50', backgroundColor: '#4CAF5010' }]}
+                onPress={onTestPermission}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: 15, fontWeight: '600', color: '#4CAF50' }}>
+                  🧪 测试权限
                 </Text>
               </TouchableOpacity>
             )}

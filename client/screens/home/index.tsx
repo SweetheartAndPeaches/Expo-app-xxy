@@ -113,13 +113,34 @@ export default function WebViewScreen() {
       const status = await NotificationListener.getPermissionStatus();
       console.log('[checkNotificationPermission] Permission status:', status);
       
-      // 'authorized' 表示已授权，其他状态视为未授权
-      const hasPermission = status === 'authorized';
-      console.log('[checkNotificationPermission] Has permission:', hasPermission);
-      return hasPermission;
+      // 'authorized' 表示已授权
+      // 'unknown' 可能表示系统还在同步权限状态，但监听器可能在运行
+      // 'denied' 表示未授权
+      if (status === 'authorized') {
+        console.log('[checkNotificationPermission] Permission is authorized');
+        return true;
+      } else if (status === 'unknown') {
+        console.log('[checkNotificationPermission] Permission status is unknown');
+        // 检查监听器是否已经在运行，如果正在运行，说明权限实际上已开启
+        if (unsubscribeNotificationListener.current) {
+          console.log('[checkNotificationPermission] Listener is running, treating as authorized');
+          return true;
+        }
+        console.log('[checkNotificationPermission] Listener is not running, returning true to try starting listener');
+        return true;
+      } else {
+        console.log('[checkNotificationPermission] Permission is denied or other status');
+        return false;
+      }
     } catch (error) {
       console.error('[checkNotificationPermission] Failed to check permission:', error);
-      return false;
+      // 如果检测失败，检查监听器是否在运行
+      if (unsubscribeNotificationListener.current) {
+        console.log('[checkNotificationPermission] Listener is running, treating as authorized despite error');
+        return true;
+      }
+      console.log('[checkNotificationPermission] Check failed and listener not running, returning true to try starting listener');
+      return true;
     }
   }, []);
 
@@ -331,6 +352,69 @@ export default function WebViewScreen() {
       Alert.alert('调试错误', `获取调试信息失败：${error}`);
     }
   }, [hasNotificationPermission, loading, forceStartListener]);
+
+  // 测试权限：通过实际测试验证权限
+  const handleTestPermission = useCallback(async () => {
+    console.log('[handleTestPermission] Testing permission by checking listener status...');
+    
+    // 检查监听器是否在运行
+    const isListenerRunning = unsubscribeNotificationListener.current !== null;
+    console.log('[handleTestPermission] Listener running:', isListenerRunning);
+    
+    // 检查是否有收到过通知
+    const { getNotifications } = await import('@/utils/notificationManager');
+    const notifications = await getNotifications();
+    const hasReceivedNotifications = notifications.length > 0;
+    console.log('[handleTestPermission] Received notifications count:', notifications.length);
+    
+    // 检查权限状态
+    // @ts-ignore
+    const status = await NotificationListener?.getPermissionStatus?.();
+    console.log('[handleTestPermission] Permission status:', status);
+    
+    // 综合判断权限是否开启
+    let permissionResult = false;
+    let resultReason = '';
+    
+    if (isListenerRunning) {
+      // 监听器在运行，说明系统允许监听通知
+      permissionResult = true;
+      resultReason = '监听器正在运行，说明系统已授权通知访问权限';
+    } else if (hasReceivedNotifications) {
+      // 收到过通知，说明之前有权限
+      permissionResult = true;
+      resultReason = '之前收到过通知，说明有通知访问权限';
+    } else if (status === 'authorized') {
+      // 系统状态是已授权
+      permissionResult = true;
+      resultReason = '系统返回已授权状态';
+    } else {
+      permissionResult = false;
+      resultReason = '监听器未运行，未收到过通知，系统状态也不是已授权';
+    }
+    
+    console.log('[handleTestPermission] Test result:', permissionResult, 'Reason:', resultReason);
+    
+    // 更新权限状态
+    setHasNotificationPermission(permissionResult);
+    
+    // 显示测试结果
+    Alert.alert(
+      permissionResult ? '✅ 权限测试通过' : '❌ 权限测试失败',
+      `测试结果：${permissionResult ? '已授权' : '未授权'}
+
+判定依据：${resultReason}
+
+详细信息：
+- 监听器状态：${isListenerRunning ? '✅ 运行中' : '❌ 未运行'}
+- 已接收通知数量：${notifications.length}
+- 系统权限状态：${status || 'unknown'}`,
+      [
+        { text: '关闭' },
+        ...(permissionResult ? [{ text: '确定', onPress: () => setShowPermissionModal(false) }] : [])
+      ]
+    );
+  }, []);
 
   // 强制启动监听器
   const handleForceStartListener = useCallback(() => {
@@ -683,6 +767,7 @@ export default function WebViewScreen() {
           onRecheck={handleRecheckPermission}
           onDebug={handleDebug}
           onForceStart={handleForceStartListener}
+          onTestPermission={handleTestPermission}
         />
 
         {/* 通知显示模态框 */}
