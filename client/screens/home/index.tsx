@@ -2,6 +2,7 @@ import React, { useRef, useCallback, useState, useMemo, useEffect } from 'react'
 import { View, TouchableOpacity, Text, BackHandler, Platform, Linking, Alert, AppState, AppStateStatus } from 'react-native';
 import { WebView, WebViewNavigation } from 'react-native-webview';
 import NetInfo from '@react-native-community/netinfo';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/hooks/useTheme';
 import { Screen } from '@/components/Screen';
 import { ThemedView } from '@/components/ThemedView';
@@ -67,6 +68,7 @@ export default function WebViewScreen() {
     time?: Date;
   } | null>(null);
   const [forceStartListener, setForceStartListener] = useState(false); // 强制启动监听器
+  const [showStatusIndicator, setShowStatusIndicator] = useState(false); // 显示状态指示器
   
   // 获取重试延迟时间（指数退避，最大 5 秒）
   const getRetryDelay = useCallback((count: number) => {
@@ -573,6 +575,28 @@ export default function WebViewScreen() {
     };
   }, [checkNotificationPermission]);
 
+  // 首次启动时显示权限已开启的提示（如果监听器在运行）
+  useEffect(() => {
+    if (Platform.OS !== 'web' && unsubscribeNotificationListener.current && hasNotificationPermission) {
+      // 监听器正在运行且权限已开启，显示一次性提示
+      const hasShownPermissionSuccess = AsyncStorage.getItem('@app_shown_permission_success');
+      
+      if (!hasShownPermissionSuccess) {
+        // 延迟 3 秒显示，让用户先看到页面
+        setTimeout(() => {
+          Alert.alert(
+            '✅ 通知访问权限已开启',
+            '通知监听器正在运行，可以接收并显示通知。\n\n点击右上角的 ℹ️ 图标可以查看监听状态。',
+            [
+              { text: '我知道了' }
+            ]
+          );
+          AsyncStorage.setItem('@app_shown_permission_success', 'true');
+        }, 3000);
+      }
+    }
+  }, [hasNotificationPermission]);
+
   // 处理导航变化（仅原生平台）
   const handleNavigationStateChange = useCallback((navState: WebViewNavigation) => {
     setCanGoBack(navState.canGoBack);
@@ -706,6 +730,75 @@ export default function WebViewScreen() {
               网络不可用，请检查网络连接
             </ThemedText>
           </View>
+        )}
+
+        {/* 通知监听状态指示器 */}
+        {Platform.OS === 'android' && (
+          <>
+            {/* 状态切换按钮 */}
+            <TouchableOpacity
+              style={[styles.statusToggleButton, { backgroundColor: showStatusIndicator ? theme.backgroundTertiary : 'transparent' }]}
+              onPress={() => setShowStatusIndicator(!showStatusIndicator)}
+              activeOpacity={0.7}
+            >
+              <FontAwesome6 
+                name={showStatusIndicator ? 'chevron-down' : 'info-circle'} 
+                size={16} 
+                color={showStatusIndicator ? theme.textSecondary : theme.textMuted} 
+              />
+            </TouchableOpacity>
+
+            {/* 状态详情面板 */}
+            {showStatusIndicator && (
+              <View style={[styles.statusIndicator, { backgroundColor: theme.backgroundTertiary, borderColor: theme.border }]}>
+                <View style={styles.statusIndicatorHeader}>
+                  <FontAwesome6 
+                    name="bell" 
+                    size={14} 
+                    color={unsubscribeNotificationListener.current ? '#4CAF50' : '#FF9800'} 
+                  />
+                  <Text style={[styles.statusIndicatorTitle, { color: theme.textPrimary }]}>
+                    通知监听状态
+                  </Text>
+                  <TouchableOpacity onPress={() => setShowStatusIndicator(false)}>
+                    <FontAwesome6 name="xmark" size={14} color={theme.textMuted} />
+                  </TouchableOpacity>
+                </View>
+                
+                <View style={styles.statusIndicatorContent}>
+                  <View style={styles.statusRow}>
+                    <Text style={[styles.statusLabel, { color: theme.textSecondary }]}>监听器状态：</Text>
+                    <Text style={[styles.statusValue, { color: unsubscribeNotificationListener.current ? '#4CAF50' : '#FF9800' }]}>
+                      {unsubscribeNotificationListener.current ? '✅ 运行中' : '❌ 未运行'}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.statusRow}>
+                    <Text style={[styles.statusLabel, { color: theme.textSecondary }]}>权限状态：</Text>
+                    <Text style={[styles.statusValue, { color: hasNotificationPermission ? '#4CAF50' : '#FF9800' }]}>
+                      {hasNotificationPermission ? '✅ 已开启' : '❌ 未开启'}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.statusRow}>
+                    <Text style={[styles.statusLabel, { color: theme.textSecondary }]}>强制启动：</Text>
+                    <Text style={[styles.statusValue, { color: forceStartListener ? '#4CAF50' : '#999' }]}>
+                      {forceStartListener ? '✅ 已开启' : '未开启'}
+                    </Text>
+                  </View>
+                </View>
+                
+                {unsubscribeNotificationListener.current && (
+                  <View style={[styles.statusHint, { backgroundColor: '#4CAF5020', borderColor: '#4CAF5040' }]}>
+                    <FontAwesome6 name="circle-check" size={12} color="#4CAF50" />
+                    <Text style={[styles.statusHintText, { color: theme.textSecondary }]}>
+                      通知监听器正在运行，可以接收通知
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+          </>
         )}
 
         {/* 错误提示 */}
