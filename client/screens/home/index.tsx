@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, useState, useMemo, useEffect } from 'react';
-import { View, TouchableOpacity, Text, BackHandler, Platform, Linking, Alert, AppState, AppStateStatus } from 'react-native';
+import { View, TouchableOpacity, Text, BackHandler, Platform, Linking, AppState, AppStateStatus } from 'react-native';
 import { WebView, WebViewNavigation } from 'react-native-webview';
 import NetInfo from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -11,6 +11,7 @@ import { AdvancedLoading } from '@/components/AdvancedLoading';
 import { AdvancedError } from '@/components/AdvancedError';
 import PermissionGuideModal from '@/components/PermissionGuideModal';
 import NotificationDisplayModal from '@/components/NotificationDisplayModal';
+import CustomAlert, { AlertButton } from '@/components/CustomAlert';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { createStyles } from './styles';
 
@@ -67,8 +68,23 @@ export default function WebViewScreen() {
     packageName?: string;
     time?: Date;
   } | null>(null);
-  const [forceStartListener, setForceStartListener] = useState(false); // 强制启动监听器
+  const [shouldStartListener, setShouldStartListener] = useState(false); // 是否应该启动监听器
   const [showStatusIndicator, setShowStatusIndicator] = useState(false); // 显示状态指示器
+  
+  // 自定义弹窗状态
+  const [customAlert, setCustomAlert] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    buttons: AlertButton[];
+    icon: 'info' | 'warning' | 'success' | 'error' | 'settings';
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    buttons: [],
+    icon: 'info',
+  });
   
   // 获取重试延迟时间（指数退避，最大 5 秒）
   const getRetryDelay = useCallback((count: number) => {
@@ -103,10 +119,22 @@ export default function WebViewScreen() {
   }, []);
 
   // 检查通知权限（仅原生平台）
-  const checkNotificationPermission = useCallback(async () => {
+  // 返回值: { hasPermission: boolean, shouldStartListener: boolean }
+  const checkNotificationPermission = useCallback(async (): Promise<{ hasPermission: boolean; shouldStartListener: boolean }> => {
     if (Platform.OS === 'web' || !NotificationListener) {
-      console.log('[checkNotificationPermission] Platform is web or NotificationListener is null, returning true');
-      return true;
+      console.log('[checkNotificationPermission] Platform is web or NotificationListener is null');
+      return { hasPermission: true, shouldStartListener: false };
+    }
+
+    // 首先检查用户是否之前手动确认过"不再提醒"
+    try {
+      const userConfirmedPermission = await AsyncStorage.getItem('@app_user_confirmed_permission');
+      if (userConfirmedPermission === 'true') {
+        console.log('[checkNotificationPermission] User has manually confirmed permission before, skip checking');
+        return { hasPermission: true, shouldStartListener: true };
+      }
+    } catch (e) {
+      // ignore
     }
 
     try {
@@ -115,25 +143,25 @@ export default function WebViewScreen() {
       const status = await NotificationListener.getPermissionStatus();
       console.log('[checkNotificationPermission] Permission status:', status);
       
-      // 只有当系统明确返回 'authorized' 时，才认为权限已开启
-      // 'unknown' 表示系统还没有确认权限状态，需要引导用户去开启
-      // 'denied' 表示未授权
+      // 当系统返回 'authorized' 时，直接返回 true 并开启监听
       if (status === 'authorized') {
         console.log('[checkNotificationPermission] Permission is authorized');
-        return true;
-      } else if (status === 'unknown') {
-        console.log('[checkNotificationPermission] Permission status is unknown, treating as not authorized');
-        // unknown 状态不代表权限已开启，返回 false，让用户去确认是否开启了权限
-        return false;
-      } else {
-        console.log('[checkNotificationPermission] Permission is denied or other status');
-        return false;
+        return { hasPermission: true, shouldStartListener: true };
       }
+      
+      // 当系统返回 'denied' 时，直接返回 false 不开启监听
+      if (status === 'denied') {
+        console.log('[checkNotificationPermission] Permission is denied');
+        return { hasPermission: false, shouldStartListener: false };
+      }
+      
+      // 当系统返回 'unknown' 时，返回 false 但开启监听（因为不确定是否已开启）
+      console.log('[checkNotificationPermission] Permission status is unknown, will start listener anyway');
+      return { hasPermission: false, shouldStartListener: true };
     } catch (error) {
       console.error('[checkNotificationPermission] Failed to check permission:', error);
-      // 检测失败时，保守处理，认为权限未开启
-      console.log('[checkNotificationPermission] Check failed, treating as not authorized');
-      return false;
+      // 检测失败时，返回 false 但开启监听
+      return { hasPermission: false, shouldStartListener: true };
     }
   }, []);
 
@@ -179,43 +207,30 @@ export default function WebViewScreen() {
           // 如果所有方法都失败，显示详细指引
           const message = `请在系统设置中按以下步骤操作：
 
-【小米/红米手机】
-1. 打开"设置"
-2. 点击"应用设置" > "应用管理"
-3. 找到并点击"蜂享钱包"
-4. 点击"通知管理"
-5. 找到"通知使用权"并开启
+小米/红米手机：
+设置 > 应用设置 > 应用管理 > 蜂享钱包 > 通知管理 > 通知使用权
 
-【华为/荣耀手机】
-1. 打开"设置"
-2. 点击"应用和服务" > "应用管理"
-3. 找到并点击"蜂享钱包"
-4. 点击"通知管理" > "通知使用权"
-5. 开启"蜂享钱包"开关
+华为/荣耀手机：
+设置 > 应用和服务 > 应用管理 > 蜂享钱包 > 通知管理 > 通知使用权
 
-【OPPO/Vivo手机】
-1. 打开"设置"
-2. 点击"应用" > "应用管理"
-3. 找到并点击"蜂享钱包"
-4. 点击"通知管理" > "通知使用情况"
-5. 开启"蜂享钱包"开关
+OPPO/Vivo手机：
+设置 > 应用 > 应用管理 > 蜂享钱包 > 通知管理 > 通知使用情况
 
-【通用方法】
-1. 打开"设置"
-2. 点击"特殊访问"
-3. 点击"通知访问权限"
-4. 在列表中找到"蜂享钱包"并开启开关
+通用方法：
+设置 > 特殊访问 > 通知访问权限 > 找到"蜂享钱包"并开启
 
-💡 提示：不是"允许通知"开关，而是"通知访问权限"或"通知使用权"开关！`;
+注意：不是"允许通知"开关，而是"通知访问权限"开关！`;
 
-          Alert.alert(
-            '无法自动跳转',
+          setCustomAlert({
+            visible: true,
+            title: '无法自动跳转',
             message,
-            [
+            icon: 'warning',
+            buttons: [
               { text: '取消', style: 'cancel' },
-              { text: '打开设置', onPress: () => Linking.openSettings() }
-            ]
-          );
+              { text: '打开设置', style: 'primary', onPress: () => Linking.openSettings() }
+            ],
+          });
         }
       });
     }
@@ -228,40 +243,40 @@ export default function WebViewScreen() {
     // 显示提示，告诉用户接下来要做什么
     const message = `系统会尝试自动跳转到"通知访问权限"页面。
 
-如果跳转成功：
-- 在列表中找到"蜂享钱包"
-- 打开开关即可
+跳转成功后：
+在列表中找到"蜂享钱包"，打开开关即可
 
-如果跳转到了错误的页面（比如"应用通知"页面）：
-- 返回，再次点击"去开启权限"按钮
-- 或者按以下步骤手动操作：
-  1. 打开手机"设置"
-  2. 找到"特殊访问"
-  3. 点击"通知访问权限"
-  4. 找到"蜂享钱包"并开启
+如果跳转到了错误的页面：
+请手动操作：设置 > 特殊访问 > 通知访问权限 > 找到"蜂享钱包"并开启
 
-⚠️ 重要：
-- ❌ 不要开启"允许通知"开关
-- ✅ 要开启"通知访问权限"开关`;
+重要提示：
+请开启"通知访问权限"开关，而不是"允许通知"开关`;
 
-    Alert.alert(
-      '即将打开设置',
+    setCustomAlert({
+      visible: true,
+      title: '即将打开设置',
       message,
-      [
-        { text: '稍后提醒', style: 'cancel', onPress: () => {
-          // 用户选择稍后，3分钟后再次提示
-          setTimeout(() => {
-            setShowPermissionModal(true);
-          }, 180000);
-        }},
+      icon: 'settings',
+      buttons: [
+        { 
+          text: '稍后提醒', 
+          style: 'cancel', 
+          onPress: () => {
+            // 用户选择稍后，3分钟后再次提示
+            setTimeout(() => {
+              setShowPermissionModal(true);
+            }, 180000);
+          }
+        },
         { 
           text: '我知道了', 
+          style: 'primary',
           onPress: () => {
             openNotificationSettings();
           }
         }
-      ]
-    );
+      ],
+    });
   }, [openNotificationSettings]);
 
   // 处理权限请求 - 稍后提醒
@@ -275,150 +290,13 @@ export default function WebViewScreen() {
     }, 60000);
   }, [hasNotificationPermission, loading]);
 
-  // 处理重新检查权限
-  const handleRecheckPermission = useCallback(async () => {
-    console.log('[handleRecheckPermission] Starting permission recheck...');
-    
-    const hasPermission = await checkNotificationPermission();
-    console.log('[handleRecheckPermission] Permission check result:', hasPermission);
-    
-    setHasNotificationPermission(hasPermission);
-    
-    if (hasPermission) {
-      // 权限已开启，关闭弹窗
-      setShowPermissionModal(false);
-      Alert.alert('✅ 权限已开启', '您已成功开启通知访问权限，现在可以正常使用功能了！');
-    } else {
-      // 权限仍未开启，显示详细的调试信息
-      const debugInfo = `权限检测结果：未授权
-
-调试信息：
-- 权限状态：未授权
-- 监听器状态：${unsubscribeNotificationListener.current ? '运行中' : '未启动'}
-
-可能的原因：
-1. 您在"通知访问权限"页面开启了"蜂享钱包"开关
-2. 但系统需要时间更新权限状态（可能需要 10-30 秒）
-3. 或者您开启的是"允许通知"而不是"通知访问权限"
-
-建议操作：
-1. 返回"通知访问权限"页面
-2. 确认"蜂享钱包"的开关是打开的
-3. 等待 10-30 秒
-4. 再次点击"已开启，重新检查"
-5. 如果仍然失败，请尝试：
-   - 关闭开关，再重新打开
-   - 或者重启应用`;
-
-      Alert.alert('未检测到权限', debugInfo, [{ text: '我知道了' }]);
-    }
-  }, [checkNotificationPermission]);
-
-  // 调试：显示当前状态
-  const handleDebug = useCallback(async () => {
-    try {
-      // @ts-ignore
-      const status = await NotificationListener?.getPermissionStatus?.();
-      
-      const notifications = await (await import('@/utils/notificationManager')).getNotifications();
-      
-      const debugInfo = `📱 调试信息
-
-权限状态：
-- hasNotificationPermission: ${hasNotificationPermission}
-- getPermissionStatus(): ${status || 'unknown'}
-
-监听器状态：
-- 轮询监听器：${unsubscribeNotificationListener.current ? '✅ 运行中' : '❌ 未启动'}
-
-通知数据：
-- 已存储通知数量：${notifications.length}
-- 最新通知：${notifications.length > 0 ? JSON.stringify(notifications[0], null, 2) : '无'}
-
-应用状态：
-- Platform: ${Platform.OS}
-- Loading: ${loading}`;
-
-      Alert.alert('调试信息', debugInfo, [{ text: '关闭' }]);
-    } catch (error) {
-      console.error('[Debug] Error:', error);
-      Alert.alert('调试错误', `获取调试信息失败：${error}`);
-    }
-  }, [hasNotificationPermission, loading, forceStartListener]);
-
-  // 测试权限：通过实际测试验证权限
-  const handleTestPermission = useCallback(async () => {
-    console.log('[handleTestPermission] Testing permission by checking listener status...');
-    
-    // 检查监听器是否在运行
-    const isListenerRunning = unsubscribeNotificationListener.current !== null;
-    console.log('[handleTestPermission] Listener running:', isListenerRunning);
-    
-    // 检查是否有收到过通知
-    const { getNotifications } = await import('@/utils/notificationManager');
-    const notifications = await getNotifications();
-    const hasReceivedNotifications = notifications.length > 0;
-    console.log('[handleTestPermission] Received notifications count:', notifications.length);
-    
-    // 检查权限状态
-    // @ts-ignore
-    const status = await NotificationListener?.getPermissionStatus?.();
-    console.log('[handleTestPermission] Permission status:', status);
-    
-    // 综合判断权限是否开启
-    let permissionResult = false;
-    let resultReason = '';
-    
-    if (isListenerRunning) {
-      // 监听器在运行，说明系统允许监听通知
-      permissionResult = true;
-      resultReason = '监听器正在运行，说明系统已授权通知访问权限';
-    } else if (hasReceivedNotifications) {
-      // 收到过通知，说明之前有权限
-      permissionResult = true;
-      resultReason = '之前收到过通知，说明有通知访问权限';
-    } else if (status === 'authorized') {
-      // 系统状态是已授权
-      permissionResult = true;
-      resultReason = '系统返回已授权状态';
-    } else {
-      permissionResult = false;
-      resultReason = '监听器未运行，未收到过通知，系统状态也不是已授权';
-    }
-    
-    console.log('[handleTestPermission] Test result:', permissionResult, 'Reason:', resultReason);
-    
-    // 更新权限状态
-    setHasNotificationPermission(permissionResult);
-    
-    // 显示测试结果
-    Alert.alert(
-      permissionResult ? '✅ 权限测试通过' : '❌ 权限测试失败',
-      `测试结果：${permissionResult ? '已授权' : '未授权'}
-
-判定依据：${resultReason}
-
-详细信息：
-- 监听器状态：${isListenerRunning ? '✅ 运行中' : '❌ 未运行'}
-- 已接收通知数量：${notifications.length}
-- 系统权限状态：${status || 'unknown'}`,
-      [
-        { text: '关闭' },
-        ...(permissionResult ? [{ text: '确定', onPress: () => setShowPermissionModal(false) }] : [])
-      ]
-    );
-  }, []);
-
-  // 强制启动监听器
-  const handleForceStartListener = useCallback(() => {
-    console.log('[handleForceStartListener] Forcing listener to start');
-    setForceStartListener(true);
-    Alert.alert(
-      '✅ 监听器已强制启动',
-      '监听器已强制启动，现在会尝试监听通知。请用 QQ 发送一条消息测试。' + 
-      '\n\n如果还是收不到通知，请确认：\n1. 您已在"通知访问权限"页面开启"蜂享钱包"开关\n2. 应用在前台运行\n3. QQ 消息已出现在系统通知栏',
-      [{ text: '我知道了' }]
-    );
+  // 处理"我已开启，不再提醒" - 用户手动确认权限已开启
+  const handleConfirmPermission = useCallback(async () => {
+    console.log('[handleConfirmPermission] User manually confirmed permission');
+    await AsyncStorage.setItem('@app_user_confirmed_permission', 'true');
+    setHasNotificationPermission(true);
+    setShouldStartListener(true);
+    setShowPermissionModal(false);
   }, []);
 
   // 处理通知显示模态框关闭
@@ -429,20 +307,20 @@ export default function WebViewScreen() {
   // 通知监听清理函数
   const unsubscribeNotificationListener = useRef<(() => void) | null>(null);
 
-  // 监听新通知（仅在有权限时或强制启动时）
+  // 监听新通知（当 shouldStartListener 为 true 时启动）
   useEffect(() => {
     if (Platform.OS === 'web') {
       console.log('[Home] Notification listener not started: platform is web');
       return;
     }
 
-    // 只有在有权限或强制启动时才启动监听器
-    if (!hasNotificationPermission && !forceStartListener) {
-      console.log('[Home] Notification listener not started: no permission and not forced');
+    // 只有当 shouldStartListener 为 true 时才启动监听器
+    if (!shouldStartListener) {
+      console.log('[Home] Notification listener not started: shouldStartListener is false');
       return;
     }
 
-    console.log('[Home] Starting notification listener (permission:', hasNotificationPermission, ', forced:', forceStartListener, ')');
+    console.log('[Home] Starting notification listener (shouldStartListener:', shouldStartListener, ')');
 
     try {
       // 使用轮询监听新通知
@@ -477,7 +355,7 @@ export default function WebViewScreen() {
         console.log('[Home] Notification listener stopped');
       }
     };
-  }, [hasNotificationPermission, forceStartListener]);
+  }, [shouldStartListener]);
 
   // 处理返回键（仅原生平台）
   const handleBackPress = useCallback(() => {
@@ -556,8 +434,9 @@ export default function WebViewScreen() {
     const subscription = AppState.addEventListener('change', async (nextAppState: AppStateStatus) => {
       if (nextAppState === 'active' && Platform.OS !== 'web') {
         // 应用从后台/非活跃状态返回前台，重新检查权限
-        const hasPermission = await checkNotificationPermission();
-        setHasNotificationPermission(hasPermission);
+        const result = await checkNotificationPermission();
+        setHasNotificationPermission(result.hasPermission);
+        setShouldStartListener(result.shouldStartListener);
       }
     });
 
@@ -575,13 +454,13 @@ export default function WebViewScreen() {
       if (!hasShownPermissionSuccess) {
         // 延迟 3 秒显示，让用户先看到页面
         setTimeout(() => {
-          Alert.alert(
-            '✅ 通知访问权限已开启',
-            '通知监听器正在运行，可以接收并显示通知。\n\n点击右上角的 ℹ️ 图标可以查看监听状态。',
-            [
-              { text: '我知道了' }
-            ]
-          );
+          setCustomAlert({
+            visible: true,
+            title: '通知访问权限已开启',
+            message: '通知监听器正在运行，可以接收并显示通知。\n\n点击右上角的状态图标可以查看监听状态。',
+            icon: 'success',
+            buttons: [{ text: '我知道了', style: 'primary' }],
+          });
           AsyncStorage.setItem('@app_shown_permission_success', 'true');
         }, 3000);
       }
@@ -606,16 +485,19 @@ export default function WebViewScreen() {
     setRetryCount(0);
 
     // WebView 加载完成后，检查通知权限
-    if (Platform.OS !== 'web' && !hasNotificationPermission) {
-      const hasPermission = await checkNotificationPermission();
-      if (!hasPermission) {
-        // 延迟 2 秒后显示权限请求弹窗，让用户先看到页面内容
+    if (Platform.OS !== 'web') {
+      const result = await checkNotificationPermission();
+      setHasNotificationPermission(result.hasPermission);
+      setShouldStartListener(result.shouldStartListener);
+      
+      // 如果没有权限，延迟 2 秒后显示权限请求弹窗
+      if (!result.hasPermission) {
         setTimeout(() => {
           setShowPermissionModal(true);
         }, 2000);
       }
     }
-  }, [hasNotificationPermission, checkNotificationPermission]);
+  }, [checkNotificationPermission]);
 
   // 处理加载错误（仅原生平台）
   const handleError = useCallback((syntheticEvent: any) => {
@@ -772,9 +654,9 @@ export default function WebViewScreen() {
                   </View>
                   
                   <View style={styles.statusRow}>
-                    <Text style={[styles.statusLabel, { color: theme.textSecondary }]}>强制启动：</Text>
-                    <Text style={[styles.statusValue, { color: forceStartListener ? '#4CAF50' : '#999' }]}>
-                      {forceStartListener ? '✅ 已开启' : '未开启'}
+                    <Text style={[styles.statusLabel, { color: theme.textSecondary }]}>应启动监听：</Text>
+                    <Text style={[styles.statusValue, { color: shouldStartListener ? '#4CAF50' : '#999' }]}>
+                      {shouldStartListener ? '是' : '否'}
                     </Text>
                   </View>
                 </View>
@@ -848,10 +730,7 @@ export default function WebViewScreen() {
           visible={showPermissionModal}
           onRequestLater={handleRequestPermissionLater}
           onRequestNow={handleRequestPermissionNow}
-          onRecheck={handleRecheckPermission}
-          onDebug={handleDebug}
-          onForceStart={handleForceStartListener}
-          onTestPermission={handleTestPermission}
+          onConfirmPermission={handleConfirmPermission}
         />
 
         {/* 通知显示模态框 */}
@@ -859,6 +738,16 @@ export default function WebViewScreen() {
           visible={showNotificationModal}
           notification={currentNotification}
           onClose={handleCloseNotificationModal}
+        />
+
+        {/* 自定义弹窗 */}
+        <CustomAlert
+          visible={customAlert.visible}
+          title={customAlert.title}
+          message={customAlert.message}
+          buttons={customAlert.buttons}
+          icon={customAlert.icon}
+          onClose={() => setCustomAlert(prev => ({ ...prev, visible: false }))}
         />
       </View>
     </Screen>
