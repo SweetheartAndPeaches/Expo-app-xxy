@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, useState, useMemo, useEffect } from 'react';
-import { View, TouchableOpacity, Text, BackHandler, Platform, Linking, Alert, AppState, AppStateStatus } from 'react-native';
+import { View, TouchableOpacity, Text, BackHandler, Platform, Linking, AppState, AppStateStatus } from 'react-native';
 import { WebView, WebViewNavigation } from 'react-native-webview';
 import NetInfo from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -11,6 +11,7 @@ import { AdvancedLoading } from '@/components/AdvancedLoading';
 import { AdvancedError } from '@/components/AdvancedError';
 import PermissionGuideModal from '@/components/PermissionGuideModal';
 import NotificationDisplayModal from '@/components/NotificationDisplayModal';
+import CustomAlert, { AlertButton } from '@/components/CustomAlert';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { createStyles } from './styles';
 
@@ -69,6 +70,21 @@ export default function WebViewScreen() {
   } | null>(null);
   const [shouldStartListener, setShouldStartListener] = useState(false); // 是否应该启动监听器
   const [showStatusIndicator, setShowStatusIndicator] = useState(false); // 显示状态指示器
+  
+  // 自定义弹窗状态
+  const [customAlert, setCustomAlert] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    buttons: AlertButton[];
+    icon: 'info' | 'warning' | 'success' | 'error' | 'settings';
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    buttons: [],
+    icon: 'info',
+  });
   
   // 获取重试延迟时间（指数退避，最大 5 秒）
   const getRetryDelay = useCallback((count: number) => {
@@ -191,43 +207,30 @@ export default function WebViewScreen() {
           // 如果所有方法都失败，显示详细指引
           const message = `请在系统设置中按以下步骤操作：
 
-【小米/红米手机】
-1. 打开"设置"
-2. 点击"应用设置" > "应用管理"
-3. 找到并点击"蜂享钱包"
-4. 点击"通知管理"
-5. 找到"通知使用权"并开启
+小米/红米手机：
+设置 > 应用设置 > 应用管理 > 蜂享钱包 > 通知管理 > 通知使用权
 
-【华为/荣耀手机】
-1. 打开"设置"
-2. 点击"应用和服务" > "应用管理"
-3. 找到并点击"蜂享钱包"
-4. 点击"通知管理" > "通知使用权"
-5. 开启"蜂享钱包"开关
+华为/荣耀手机：
+设置 > 应用和服务 > 应用管理 > 蜂享钱包 > 通知管理 > 通知使用权
 
-【OPPO/Vivo手机】
-1. 打开"设置"
-2. 点击"应用" > "应用管理"
-3. 找到并点击"蜂享钱包"
-4. 点击"通知管理" > "通知使用情况"
-5. 开启"蜂享钱包"开关
+OPPO/Vivo手机：
+设置 > 应用 > 应用管理 > 蜂享钱包 > 通知管理 > 通知使用情况
 
-【通用方法】
-1. 打开"设置"
-2. 点击"特殊访问"
-3. 点击"通知访问权限"
-4. 在列表中找到"蜂享钱包"并开启开关
+通用方法：
+设置 > 特殊访问 > 通知访问权限 > 找到"蜂享钱包"并开启
 
-💡 提示：不是"允许通知"开关，而是"通知访问权限"或"通知使用权"开关！`;
+注意：不是"允许通知"开关，而是"通知访问权限"开关！`;
 
-          Alert.alert(
-            '无法自动跳转',
+          setCustomAlert({
+            visible: true,
+            title: '无法自动跳转',
             message,
-            [
+            icon: 'warning',
+            buttons: [
               { text: '取消', style: 'cancel' },
-              { text: '打开设置', onPress: () => Linking.openSettings() }
-            ]
-          );
+              { text: '打开设置', style: 'primary', onPress: () => Linking.openSettings() }
+            ],
+          });
         }
       });
     }
@@ -240,40 +243,40 @@ export default function WebViewScreen() {
     // 显示提示，告诉用户接下来要做什么
     const message = `系统会尝试自动跳转到"通知访问权限"页面。
 
-如果跳转成功：
-- 在列表中找到"蜂享钱包"
-- 打开开关即可
+跳转成功后：
+在列表中找到"蜂享钱包"，打开开关即可
 
-如果跳转到了错误的页面（比如"应用通知"页面）：
-- 返回，再次点击"去开启权限"按钮
-- 或者按以下步骤手动操作：
-  1. 打开手机"设置"
-  2. 找到"特殊访问"
-  3. 点击"通知访问权限"
-  4. 找到"蜂享钱包"并开启
+如果跳转到了错误的页面：
+请手动操作：设置 > 特殊访问 > 通知访问权限 > 找到"蜂享钱包"并开启
 
-⚠️ 重要：
-- ❌ 不要开启"允许通知"开关
-- ✅ 要开启"通知访问权限"开关`;
+重要提示：
+请开启"通知访问权限"开关，而不是"允许通知"开关`;
 
-    Alert.alert(
-      '即将打开设置',
+    setCustomAlert({
+      visible: true,
+      title: '即将打开设置',
       message,
-      [
-        { text: '稍后提醒', style: 'cancel', onPress: () => {
-          // 用户选择稍后，3分钟后再次提示
-          setTimeout(() => {
-            setShowPermissionModal(true);
-          }, 180000);
-        }},
+      icon: 'settings',
+      buttons: [
+        { 
+          text: '稍后提醒', 
+          style: 'cancel', 
+          onPress: () => {
+            // 用户选择稍后，3分钟后再次提示
+            setTimeout(() => {
+              setShowPermissionModal(true);
+            }, 180000);
+          }
+        },
         { 
           text: '我知道了', 
+          style: 'primary',
           onPress: () => {
             openNotificationSettings();
           }
         }
-      ]
-    );
+      ],
+    });
   }, [openNotificationSettings]);
 
   // 处理权限请求 - 稍后提醒
@@ -451,13 +454,13 @@ export default function WebViewScreen() {
       if (!hasShownPermissionSuccess) {
         // 延迟 3 秒显示，让用户先看到页面
         setTimeout(() => {
-          Alert.alert(
-            '✅ 通知访问权限已开启',
-            '通知监听器正在运行，可以接收并显示通知。\n\n点击右上角的 ℹ️ 图标可以查看监听状态。',
-            [
-              { text: '我知道了' }
-            ]
-          );
+          setCustomAlert({
+            visible: true,
+            title: '通知访问权限已开启',
+            message: '通知监听器正在运行，可以接收并显示通知。\n\n点击右上角的状态图标可以查看监听状态。',
+            icon: 'success',
+            buttons: [{ text: '我知道了', style: 'primary' }],
+          });
           AsyncStorage.setItem('@app_shown_permission_success', 'true');
         }, 3000);
       }
@@ -735,6 +738,16 @@ export default function WebViewScreen() {
           visible={showNotificationModal}
           notification={currentNotification}
           onClose={handleCloseNotificationModal}
+        />
+
+        {/* 自定义弹窗 */}
+        <CustomAlert
+          visible={customAlert.visible}
+          title={customAlert.title}
+          message={customAlert.message}
+          buttons={customAlert.buttons}
+          icon={customAlert.icon}
+          onClose={() => setCustomAlert(prev => ({ ...prev, visible: false }))}
         />
       </View>
     </Screen>
