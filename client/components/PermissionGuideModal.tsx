@@ -17,20 +17,14 @@ interface PermissionGuideModalProps {
   visible: boolean;
   onRequestLater: () => void;
   onRequestNow: () => void;
-  onRecheck?: () => void;
-  onDebug?: () => void;
-  onForceStart?: () => void;
-  onTestPermission?: () => void;
+  onConfirmPermission: () => void;
 }
 
 export default function PermissionGuideModal({
   visible,
   onRequestLater,
   onRequestNow,
-  onRecheck,
-  onDebug,
-  onForceStart,
-  onTestPermission,
+  onConfirmPermission,
 }: PermissionGuideModalProps) {
   const { theme, isDark } = useTheme();
 
@@ -221,6 +215,7 @@ export default function PermissionGuideModal({
 
           {/* 按钮 */}
           <View style={styles.buttonContainer}>
+            {/* 去开启权限 */}
             <TouchableOpacity
               style={styles.primaryButton}
               onPress={onRequestNow}
@@ -234,54 +229,18 @@ export default function PermissionGuideModal({
               </LinearGradient>
             </TouchableOpacity>
 
-            {onRecheck && (
-              <TouchableOpacity
-                style={[styles.secondaryButton, { borderColor: theme.primary }]}
-                onPress={onRecheck}
-                activeOpacity={0.7}
-              >
-                <Text style={{ fontSize: 15, fontWeight: '500', color: theme.primary }}>
-                  已开启，重新检查
-                </Text>
-              </TouchableOpacity>
-            )}
+            {/* 我已开启，不再提醒 */}
+            <TouchableOpacity
+              style={[styles.secondaryButton, { borderColor: theme.primary }]}
+              onPress={onConfirmPermission}
+              activeOpacity={0.7}
+            >
+              <Text style={{ fontSize: 15, fontWeight: '500', color: theme.primary }}>
+                我已开启，不再提醒
+              </Text>
+            </TouchableOpacity>
 
-            {onTestPermission && (
-              <TouchableOpacity
-                style={[styles.secondaryButton, { borderColor: '#4CAF50', backgroundColor: '#4CAF5010' }]}
-                onPress={onTestPermission}
-                activeOpacity={0.7}
-              >
-                <Text style={{ fontSize: 15, fontWeight: '600', color: '#4CAF50' }}>
-                  🧪 测试权限
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {onForceStart && (
-              <TouchableOpacity
-                style={[styles.secondaryButton, { borderColor: '#FF6B6B', backgroundColor: '#FF6B6B10' }]}
-                onPress={onForceStart}
-                activeOpacity={0.7}
-              >
-                <Text style={{ fontSize: 15, fontWeight: '600', color: '#FF6B6B' }}>
-                  ⚡ 强制启动监听器
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {onDebug && (
-              <TouchableOpacity
-                style={[styles.secondaryButton, { borderColor: theme.textMuted }]}
-                onPress={onDebug}
-                activeOpacity={0.7}
-              >
-                <Text style={{ fontSize: 13, fontWeight: '500', color: theme.textMuted }}>
-                  🔧 调试信息
-                </Text>
-              </TouchableOpacity>
-            )}
-
+            {/* 稍后提醒 */}
             <TouchableOpacity
               style={styles.secondaryButton}
               onPress={onRequestLater}

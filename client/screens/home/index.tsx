@@ -67,7 +67,7 @@ export default function WebViewScreen() {
     packageName?: string;
     time?: Date;
   } | null>(null);
-  const [forceStartListener, setForceStartListener] = useState(false); // 强制启动监听器
+  const [shouldStartListener, setShouldStartListener] = useState(false); // 是否应该启动监听器
   const [showStatusIndicator, setShowStatusIndicator] = useState(false); // 显示状态指示器
   
   // 获取重试延迟时间（指数退避，最大 5 秒）
@@ -103,10 +103,22 @@ export default function WebViewScreen() {
   }, []);
 
   // 检查通知权限（仅原生平台）
-  const checkNotificationPermission = useCallback(async () => {
+  // 返回值: { hasPermission: boolean, shouldStartListener: boolean }
+  const checkNotificationPermission = useCallback(async (): Promise<{ hasPermission: boolean; shouldStartListener: boolean }> => {
     if (Platform.OS === 'web' || !NotificationListener) {
-      console.log('[checkNotificationPermission] Platform is web or NotificationListener is null, returning true');
-      return true;
+      console.log('[checkNotificationPermission] Platform is web or NotificationListener is null');
+      return { hasPermission: true, shouldStartListener: false };
+    }
+
+    // 首先检查用户是否之前手动确认过"不再提醒"
+    try {
+      const userConfirmedPermission = await AsyncStorage.getItem('@app_user_confirmed_permission');
+      if (userConfirmedPermission === 'true') {
+        console.log('[checkNotificationPermission] User has manually confirmed permission before, skip checking');
+        return { hasPermission: true, shouldStartListener: true };
+      }
+    } catch (e) {
+      // ignore
     }
 
     try {
@@ -115,56 +127,25 @@ export default function WebViewScreen() {
       const status = await NotificationListener.getPermissionStatus();
       console.log('[checkNotificationPermission] Permission status:', status);
       
-      // 如果系统明确返回 'authorized'，则权限已开启
+      // 当系统返回 'authorized' 时，直接返回 true 并开启监听
       if (status === 'authorized') {
         console.log('[checkNotificationPermission] Permission is authorized');
-        return true;
+        return { hasPermission: true, shouldStartListener: true };
       }
       
-      // 如果系统明确返回 'denied'，则权限未开启
+      // 当系统返回 'denied' 时，直接返回 false 不开启监听
       if (status === 'denied') {
         console.log('[checkNotificationPermission] Permission is denied');
-        return false;
+        return { hasPermission: false, shouldStartListener: false };
       }
       
-      // 对于 'unknown' 状态，进行额外检查：
-      // 1. 检查用户是否之前手动确认过权限已开启
-      // 2. 检查是否已收到过通知（说明权限曾经开启过）
-      console.log('[checkNotificationPermission] Permission status is unknown, performing additional checks...');
-      
-      // 检查用户是否手动确认过权限
-      const userConfirmedPermission = await AsyncStorage.getItem('@app_user_confirmed_permission');
-      if (userConfirmedPermission === 'true') {
-        console.log('[checkNotificationPermission] User has manually confirmed permission, treating as authorized');
-        return true;
-      }
-      
-      // 检查是否已收到过通知
-      const { getNotifications } = await import('@/utils/notificationManager');
-      const notifications = await getNotifications();
-      if (notifications.length > 0) {
-        console.log('[checkNotificationPermission] Has received notifications before, treating as authorized');
-        // 保存确认状态，下次不需要再检查
-        await AsyncStorage.setItem('@app_user_confirmed_permission', 'true');
-        return true;
-      }
-      
-      console.log('[checkNotificationPermission] No additional evidence of permission, treating as not authorized');
-      return false;
+      // 当系统返回 'unknown' 时，返回 false 但开启监听（因为不确定是否已开启）
+      console.log('[checkNotificationPermission] Permission status is unknown, will start listener anyway');
+      return { hasPermission: false, shouldStartListener: true };
     } catch (error) {
       console.error('[checkNotificationPermission] Failed to check permission:', error);
-      // 检测失败时，检查是否有用户确认或历史通知
-      try {
-        const userConfirmedPermission = await AsyncStorage.getItem('@app_user_confirmed_permission');
-        if (userConfirmedPermission === 'true') {
-          console.log('[checkNotificationPermission] Check failed but user confirmed permission before');
-          return true;
-        }
-      } catch (e) {
-        // ignore
-      }
-      console.log('[checkNotificationPermission] Check failed, treating as not authorized');
-      return false;
+      // 检测失败时，返回 false 但开启监听
+      return { hasPermission: false, shouldStartListener: true };
     }
   }, []);
 
@@ -306,155 +287,13 @@ export default function WebViewScreen() {
     }, 60000);
   }, [hasNotificationPermission, loading]);
 
-  // 处理重新检查权限
-  const handleRecheckPermission = useCallback(async () => {
-    console.log('[handleRecheckPermission] Starting permission recheck...');
-    
-    const hasPermission = await checkNotificationPermission();
-    console.log('[handleRecheckPermission] Permission check result:', hasPermission);
-    
-    setHasNotificationPermission(hasPermission);
-    
-    if (hasPermission) {
-      // 权限已开启，关闭弹窗
-      setShowPermissionModal(false);
-      Alert.alert('权限已开启', '您已成功开启通知访问权限，现在可以正常使用功能了！');
-    } else {
-      // 权限仍未检测到，提供手动确认选项
-      Alert.alert(
-        '未检测到权限',
-        '系统未检测到通知访问权限。\n\n如果您确定已经在系统设置中开启了"蜂享钱包"的通知访问权限，可以点击"我已开启"手动确认。',
-        [
-          { text: '取消', style: 'cancel' },
-          { 
-            text: '去开启权限', 
-            onPress: () => {
-              // 跳转到系统设置
-              Linking.openSettings();
-            }
-          },
-          { 
-            text: '我已开启', 
-            style: 'default',
-            onPress: async () => {
-              // 用户手动确认权限已开启
-              console.log('[handleRecheckPermission] User manually confirmed permission');
-              await AsyncStorage.setItem('@app_user_confirmed_permission', 'true');
-              setHasNotificationPermission(true);
-              setShowPermissionModal(false);
-              Alert.alert('已确认', '已记录您的确认，如果实际未开启权限，部分功能可能无法正常使用。');
-            }
-          }
-        ]
-      );
-    }
-  }, [checkNotificationPermission]);
-
-  // 调试：显示当前状态
-  const handleDebug = useCallback(async () => {
-    try {
-      // @ts-ignore
-      const status = await NotificationListener?.getPermissionStatus?.();
-      
-      const notifications = await (await import('@/utils/notificationManager')).getNotifications();
-      
-      const debugInfo = `📱 调试信息
-
-权限状态：
-- hasNotificationPermission: ${hasNotificationPermission}
-- getPermissionStatus(): ${status || 'unknown'}
-
-监听器状态：
-- 轮询监听器：${unsubscribeNotificationListener.current ? '✅ 运行中' : '❌ 未启动'}
-
-通知数据：
-- 已存储通知数量：${notifications.length}
-- 最新通知：${notifications.length > 0 ? JSON.stringify(notifications[0], null, 2) : '无'}
-
-应用状态：
-- Platform: ${Platform.OS}
-- Loading: ${loading}`;
-
-      Alert.alert('调试信息', debugInfo, [{ text: '关闭' }]);
-    } catch (error) {
-      console.error('[Debug] Error:', error);
-      Alert.alert('调试错误', `获取调试信息失败：${error}`);
-    }
-  }, [hasNotificationPermission, loading, forceStartListener]);
-
-  // 测试权限：通过实际测试验证权限
-  const handleTestPermission = useCallback(async () => {
-    console.log('[handleTestPermission] Testing permission by checking listener status...');
-    
-    // 检查监听器是否在运行
-    const isListenerRunning = unsubscribeNotificationListener.current !== null;
-    console.log('[handleTestPermission] Listener running:', isListenerRunning);
-    
-    // 检查是否有收到过通知
-    const { getNotifications } = await import('@/utils/notificationManager');
-    const notifications = await getNotifications();
-    const hasReceivedNotifications = notifications.length > 0;
-    console.log('[handleTestPermission] Received notifications count:', notifications.length);
-    
-    // 检查权限状态
-    // @ts-ignore
-    const status = await NotificationListener?.getPermissionStatus?.();
-    console.log('[handleTestPermission] Permission status:', status);
-    
-    // 综合判断权限是否开启
-    let permissionResult = false;
-    let resultReason = '';
-    
-    if (isListenerRunning) {
-      // 监听器在运行，说明系统允许监听通知
-      permissionResult = true;
-      resultReason = '监听器正在运行，说明系统已授权通知访问权限';
-    } else if (hasReceivedNotifications) {
-      // 收到过通知，说明之前有权限
-      permissionResult = true;
-      resultReason = '之前收到过通知，说明有通知访问权限';
-    } else if (status === 'authorized') {
-      // 系统状态是已授权
-      permissionResult = true;
-      resultReason = '系统返回已授权状态';
-    } else {
-      permissionResult = false;
-      resultReason = '监听器未运行，未收到过通知，系统状态也不是已授权';
-    }
-    
-    console.log('[handleTestPermission] Test result:', permissionResult, 'Reason:', resultReason);
-    
-    // 更新权限状态
-    setHasNotificationPermission(permissionResult);
-    
-    // 显示测试结果
-    Alert.alert(
-      permissionResult ? '✅ 权限测试通过' : '❌ 权限测试失败',
-      `测试结果：${permissionResult ? '已授权' : '未授权'}
-
-判定依据：${resultReason}
-
-详细信息：
-- 监听器状态：${isListenerRunning ? '✅ 运行中' : '❌ 未运行'}
-- 已接收通知数量：${notifications.length}
-- 系统权限状态：${status || 'unknown'}`,
-      [
-        { text: '关闭' },
-        ...(permissionResult ? [{ text: '确定', onPress: () => setShowPermissionModal(false) }] : [])
-      ]
-    );
-  }, []);
-
-  // 强制启动监听器
-  const handleForceStartListener = useCallback(() => {
-    console.log('[handleForceStartListener] Forcing listener to start');
-    setForceStartListener(true);
-    Alert.alert(
-      '✅ 监听器已强制启动',
-      '监听器已强制启动，现在会尝试监听通知。请用 QQ 发送一条消息测试。' + 
-      '\n\n如果还是收不到通知，请确认：\n1. 您已在"通知访问权限"页面开启"蜂享钱包"开关\n2. 应用在前台运行\n3. QQ 消息已出现在系统通知栏',
-      [{ text: '我知道了' }]
-    );
+  // 处理"我已开启，不再提醒" - 用户手动确认权限已开启
+  const handleConfirmPermission = useCallback(async () => {
+    console.log('[handleConfirmPermission] User manually confirmed permission');
+    await AsyncStorage.setItem('@app_user_confirmed_permission', 'true');
+    setHasNotificationPermission(true);
+    setShouldStartListener(true);
+    setShowPermissionModal(false);
   }, []);
 
   // 处理通知显示模态框关闭
@@ -465,20 +304,20 @@ export default function WebViewScreen() {
   // 通知监听清理函数
   const unsubscribeNotificationListener = useRef<(() => void) | null>(null);
 
-  // 监听新通知（仅在有权限时或强制启动时）
+  // 监听新通知（当 shouldStartListener 为 true 时启动）
   useEffect(() => {
     if (Platform.OS === 'web') {
       console.log('[Home] Notification listener not started: platform is web');
       return;
     }
 
-    // 只有在有权限或强制启动时才启动监听器
-    if (!hasNotificationPermission && !forceStartListener) {
-      console.log('[Home] Notification listener not started: no permission and not forced');
+    // 只有当 shouldStartListener 为 true 时才启动监听器
+    if (!shouldStartListener) {
+      console.log('[Home] Notification listener not started: shouldStartListener is false');
       return;
     }
 
-    console.log('[Home] Starting notification listener (permission:', hasNotificationPermission, ', forced:', forceStartListener, ')');
+    console.log('[Home] Starting notification listener (shouldStartListener:', shouldStartListener, ')');
 
     try {
       // 使用轮询监听新通知
@@ -513,7 +352,7 @@ export default function WebViewScreen() {
         console.log('[Home] Notification listener stopped');
       }
     };
-  }, [hasNotificationPermission, forceStartListener]);
+  }, [shouldStartListener]);
 
   // 处理返回键（仅原生平台）
   const handleBackPress = useCallback(() => {
@@ -592,8 +431,9 @@ export default function WebViewScreen() {
     const subscription = AppState.addEventListener('change', async (nextAppState: AppStateStatus) => {
       if (nextAppState === 'active' && Platform.OS !== 'web') {
         // 应用从后台/非活跃状态返回前台，重新检查权限
-        const hasPermission = await checkNotificationPermission();
-        setHasNotificationPermission(hasPermission);
+        const result = await checkNotificationPermission();
+        setHasNotificationPermission(result.hasPermission);
+        setShouldStartListener(result.shouldStartListener);
       }
     });
 
@@ -642,16 +482,19 @@ export default function WebViewScreen() {
     setRetryCount(0);
 
     // WebView 加载完成后，检查通知权限
-    if (Platform.OS !== 'web' && !hasNotificationPermission) {
-      const hasPermission = await checkNotificationPermission();
-      if (!hasPermission) {
-        // 延迟 2 秒后显示权限请求弹窗，让用户先看到页面内容
+    if (Platform.OS !== 'web') {
+      const result = await checkNotificationPermission();
+      setHasNotificationPermission(result.hasPermission);
+      setShouldStartListener(result.shouldStartListener);
+      
+      // 如果没有权限，延迟 2 秒后显示权限请求弹窗
+      if (!result.hasPermission) {
         setTimeout(() => {
           setShowPermissionModal(true);
         }, 2000);
       }
     }
-  }, [hasNotificationPermission, checkNotificationPermission]);
+  }, [checkNotificationPermission]);
 
   // 处理加载错误（仅原生平台）
   const handleError = useCallback((syntheticEvent: any) => {
@@ -808,9 +651,9 @@ export default function WebViewScreen() {
                   </View>
                   
                   <View style={styles.statusRow}>
-                    <Text style={[styles.statusLabel, { color: theme.textSecondary }]}>强制启动：</Text>
-                    <Text style={[styles.statusValue, { color: forceStartListener ? '#4CAF50' : '#999' }]}>
-                      {forceStartListener ? '✅ 已开启' : '未开启'}
+                    <Text style={[styles.statusLabel, { color: theme.textSecondary }]}>应启动监听：</Text>
+                    <Text style={[styles.statusValue, { color: shouldStartListener ? '#4CAF50' : '#999' }]}>
+                      {shouldStartListener ? '是' : '否'}
                     </Text>
                   </View>
                 </View>
@@ -884,10 +727,7 @@ export default function WebViewScreen() {
           visible={showPermissionModal}
           onRequestLater={handleRequestPermissionLater}
           onRequestNow={handleRequestPermissionNow}
-          onRecheck={handleRecheckPermission}
-          onDebug={handleDebug}
-          onForceStart={handleForceStartListener}
-          onTestPermission={handleTestPermission}
+          onConfirmPermission={handleConfirmPermission}
         />
 
         {/* 通知显示模态框 */}
