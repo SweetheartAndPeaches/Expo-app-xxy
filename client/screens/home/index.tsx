@@ -115,23 +115,54 @@ export default function WebViewScreen() {
       const status = await NotificationListener.getPermissionStatus();
       console.log('[checkNotificationPermission] Permission status:', status);
       
-      // 只有当系统明确返回 'authorized' 时，才认为权限已开启
-      // 'unknown' 表示系统还没有确认权限状态，需要引导用户去开启
-      // 'denied' 表示未授权
+      // 如果系统明确返回 'authorized'，则权限已开启
       if (status === 'authorized') {
         console.log('[checkNotificationPermission] Permission is authorized');
         return true;
-      } else if (status === 'unknown') {
-        console.log('[checkNotificationPermission] Permission status is unknown, treating as not authorized');
-        // unknown 状态不代表权限已开启，返回 false，让用户去确认是否开启了权限
-        return false;
-      } else {
-        console.log('[checkNotificationPermission] Permission is denied or other status');
+      }
+      
+      // 如果系统明确返回 'denied'，则权限未开启
+      if (status === 'denied') {
+        console.log('[checkNotificationPermission] Permission is denied');
         return false;
       }
+      
+      // 对于 'unknown' 状态，进行额外检查：
+      // 1. 检查用户是否之前手动确认过权限已开启
+      // 2. 检查是否已收到过通知（说明权限曾经开启过）
+      console.log('[checkNotificationPermission] Permission status is unknown, performing additional checks...');
+      
+      // 检查用户是否手动确认过权限
+      const userConfirmedPermission = await AsyncStorage.getItem('@app_user_confirmed_permission');
+      if (userConfirmedPermission === 'true') {
+        console.log('[checkNotificationPermission] User has manually confirmed permission, treating as authorized');
+        return true;
+      }
+      
+      // 检查是否已收到过通知
+      const { getNotifications } = await import('@/utils/notificationManager');
+      const notifications = await getNotifications();
+      if (notifications.length > 0) {
+        console.log('[checkNotificationPermission] Has received notifications before, treating as authorized');
+        // 保存确认状态，下次不需要再检查
+        await AsyncStorage.setItem('@app_user_confirmed_permission', 'true');
+        return true;
+      }
+      
+      console.log('[checkNotificationPermission] No additional evidence of permission, treating as not authorized');
+      return false;
     } catch (error) {
       console.error('[checkNotificationPermission] Failed to check permission:', error);
-      // 检测失败时，保守处理，认为权限未开启
+      // 检测失败时，检查是否有用户确认或历史通知
+      try {
+        const userConfirmedPermission = await AsyncStorage.getItem('@app_user_confirmed_permission');
+        if (userConfirmedPermission === 'true') {
+          console.log('[checkNotificationPermission] Check failed but user confirmed permission before');
+          return true;
+        }
+      } catch (e) {
+        // ignore
+      }
       console.log('[checkNotificationPermission] Check failed, treating as not authorized');
       return false;
     }
@@ -287,30 +318,35 @@ export default function WebViewScreen() {
     if (hasPermission) {
       // 权限已开启，关闭弹窗
       setShowPermissionModal(false);
-      Alert.alert('✅ 权限已开启', '您已成功开启通知访问权限，现在可以正常使用功能了！');
+      Alert.alert('权限已开启', '您已成功开启通知访问权限，现在可以正常使用功能了！');
     } else {
-      // 权限仍未开启，显示详细的调试信息
-      const debugInfo = `权限检测结果：未授权
-
-调试信息：
-- 权限状态：未授权
-- 监听器状态：${unsubscribeNotificationListener.current ? '运行中' : '未启动'}
-
-可能的原因：
-1. 您在"通知访问权限"页面开启了"蜂享钱包"开关
-2. 但系统需要时间更新权限状态（可能需要 10-30 秒）
-3. 或者您开启的是"允许通知"而不是"通知访问权限"
-
-建议操作：
-1. 返回"通知访问权限"页面
-2. 确认"蜂享钱包"的开关是打开的
-3. 等待 10-30 秒
-4. 再次点击"已开启，重新检查"
-5. 如果仍然失败，请尝试：
-   - 关闭开关，再重新打开
-   - 或者重启应用`;
-
-      Alert.alert('未检测到权限', debugInfo, [{ text: '我知道了' }]);
+      // 权限仍未检测到，提供手动确认选项
+      Alert.alert(
+        '未检测到权限',
+        '系统未检测到通知访问权限。\n\n如果您确定已经在系统设置中开启了"蜂享钱包"的通知访问权限，可以点击"我已开启"手动确认。',
+        [
+          { text: '取消', style: 'cancel' },
+          { 
+            text: '去开启权限', 
+            onPress: () => {
+              // 跳转到系统设置
+              Linking.openSettings();
+            }
+          },
+          { 
+            text: '我已开启', 
+            style: 'default',
+            onPress: async () => {
+              // 用户手动确认权限已开启
+              console.log('[handleRecheckPermission] User manually confirmed permission');
+              await AsyncStorage.setItem('@app_user_confirmed_permission', 'true');
+              setHasNotificationPermission(true);
+              setShowPermissionModal(false);
+              Alert.alert('已确认', '已记录您的确认，如果实际未开启权限，部分功能可能无法正常使用。');
+            }
+          }
+        ]
+      );
     }
   }, [checkNotificationPermission]);
 
