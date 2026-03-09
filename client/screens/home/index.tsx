@@ -115,34 +115,25 @@ export default function WebViewScreen() {
       const status = await NotificationListener.getPermissionStatus();
       console.log('[checkNotificationPermission] Permission status:', status);
       
-      // 'authorized' 表示已授权
-      // 'unknown' 可能表示系统还在同步权限状态，但监听器可能在运行
+      // 只有当系统明确返回 'authorized' 时，才认为权限已开启
+      // 'unknown' 表示系统还没有确认权限状态，需要引导用户去开启
       // 'denied' 表示未授权
       if (status === 'authorized') {
         console.log('[checkNotificationPermission] Permission is authorized');
         return true;
       } else if (status === 'unknown') {
-        console.log('[checkNotificationPermission] Permission status is unknown');
-        // 检查监听器是否已经在运行，如果正在运行，说明权限实际上已开启
-        if (unsubscribeNotificationListener.current) {
-          console.log('[checkNotificationPermission] Listener is running, treating as authorized');
-          return true;
-        }
-        console.log('[checkNotificationPermission] Listener is not running, returning true to try starting listener');
-        return true;
+        console.log('[checkNotificationPermission] Permission status is unknown, treating as not authorized');
+        // unknown 状态不代表权限已开启，返回 false，让用户去确认是否开启了权限
+        return false;
       } else {
         console.log('[checkNotificationPermission] Permission is denied or other status');
         return false;
       }
     } catch (error) {
       console.error('[checkNotificationPermission] Failed to check permission:', error);
-      // 如果检测失败，检查监听器是否在运行
-      if (unsubscribeNotificationListener.current) {
-        console.log('[checkNotificationPermission] Listener is running, treating as authorized despite error');
-        return true;
-      }
-      console.log('[checkNotificationPermission] Check failed and listener not running, returning true to try starting listener');
-      return true;
+      // 检测失败时，保守处理，认为权限未开启
+      console.log('[checkNotificationPermission] Check failed, treating as not authorized');
+      return false;
     }
   }, []);
 
