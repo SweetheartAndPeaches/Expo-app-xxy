@@ -263,7 +263,18 @@ OPPO/Vivo手机：
           style: 'cancel', 
           onPress: () => {
             // 用户选择稍后，3分钟后再次提示
-            setTimeout(() => {
+            setTimeout(async () => {
+              // 检查用户是否已经手动确认过"不再提醒"
+              try {
+                const userConfirmedPermission = await AsyncStorage.getItem('@app_user_confirmed_permission');
+                if (userConfirmedPermission === 'true') {
+                  console.log('[handleRequestPermission] User has already confirmed permission, skipping reminder');
+                  return;
+                }
+              } catch (e) {
+                console.error('[handleRequestPermission] Failed to check user confirmation:', e);
+              }
+              
               setShowPermissionModal(true);
             }, 180000);
           }
@@ -283,7 +294,19 @@ OPPO/Vivo手机：
   const handleRequestPermissionLater = useCallback(() => {
     setShowPermissionModal(false);
     // 1分钟后再次检查
-    setTimeout(() => {
+    setTimeout(async () => {
+      // 检查用户是否已经手动确认过"不再提醒"
+      try {
+        const userConfirmedPermission = await AsyncStorage.getItem('@app_user_confirmed_permission');
+        if (userConfirmedPermission === 'true') {
+          console.log('[handleRequestPermissionLater] User has already confirmed permission, skipping reminder');
+          return;
+        }
+      } catch (e) {
+        console.error('[handleRequestPermissionLater] Failed to check user confirmation:', e);
+      }
+      
+      // 只有在用户未确认过"不再提醒"时才显示弹窗
       if (!hasNotificationPermission && !loading) {
         setShowPermissionModal(true);
       }
@@ -447,24 +470,26 @@ OPPO/Vivo手机：
 
   // 首次启动时显示权限已开启的提示（如果监听器在运行）
   useEffect(() => {
-    if (Platform.OS !== 'web' && unsubscribeNotificationListener.current && hasNotificationPermission) {
-      // 监听器正在运行且权限已开启，显示一次性提示
-      const hasShownPermissionSuccess = AsyncStorage.getItem('@app_shown_permission_success');
+    (async () => {
+      if (Platform.OS !== 'web' && unsubscribeNotificationListener.current && hasNotificationPermission) {
+        // 监听器正在运行且权限已开启，显示一次性提示
+        const hasShownPermissionSuccess = await AsyncStorage.getItem('@app_shown_permission_success');
       
-      if (!hasShownPermissionSuccess) {
-        // 延迟 3 秒显示，让用户先看到页面
-        setTimeout(() => {
-          setCustomAlert({
-            visible: true,
-            title: '通知访问权限已开启',
-            message: '通知监听器正在运行，可以接收并显示通知。\n\n点击右上角的状态图标可以查看监听状态。',
-            icon: 'success',
-            buttons: [{ text: '我知道了', style: 'primary' }],
-          });
-          AsyncStorage.setItem('@app_shown_permission_success', 'true');
-        }, 3000);
+        if (!hasShownPermissionSuccess) {
+          // 延迟 3 秒显示，让用户先看到页面
+          setTimeout(() => {
+            setCustomAlert({
+              visible: true,
+              title: '通知访问权限已开启',
+              message: '通知监听器正在运行，可以接收并显示通知。\n\n点击右上角的状态图标可以查看监听状态。',
+              icon: 'success',
+              buttons: [{ text: '我知道了', style: 'primary' }],
+            });
+            AsyncStorage.setItem('@app_shown_permission_success', 'true');
+          }, 3000);
+        }
       }
-    }
+    })();
   }, [hasNotificationPermission]);
 
   // 处理导航变化（仅原生平台）
@@ -492,7 +517,18 @@ OPPO/Vivo手机：
       
       // 如果没有权限，延迟 2 秒后显示权限请求弹窗
       if (!result.hasPermission) {
-        setTimeout(() => {
+        setTimeout(async () => {
+          // 再次检查用户是否已经确认过"不再提醒"（双重保险）
+          try {
+            const userConfirmedPermission = await AsyncStorage.getItem('@app_user_confirmed_permission');
+            if (userConfirmedPermission === 'true') {
+              console.log('[handleLoadEnd] User has already confirmed permission, skipping modal');
+              return;
+            }
+          } catch (e) {
+            console.error('[handleLoadEnd] Failed to check user confirmation:', e);
+          }
+          
           setShowPermissionModal(true);
         }, 2000);
       }
