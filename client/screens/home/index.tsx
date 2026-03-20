@@ -23,7 +23,7 @@ const NotificationListener = Platform.OS === 'web' ? null : NotificationListener
 // 默认配置（可通过环境变量或配置文件覆盖）
 const DEFAULT_CONFIG = {
   url: process.env.EXPO_PUBLIC_WEBVIEW_URL || 'https://gamepay-app-rouge.vercel.app',
-  title: process.env.EXPO_PUBLIC_APP_TITLE || '蜂享钱包',
+  title: process.env.EXPO_PUBLIC_APP_TITLE || '9INR',
 };
 
 // Web 平台的 iframe 组件
@@ -208,16 +208,16 @@ export default function WebViewScreen() {
           const message = `请在系统设置中按以下步骤操作：
 
 小米/红米手机：
-设置 > 应用设置 > 应用管理 > 蜂享钱包 > 通知管理 > 通知使用权
+设置 > 应用设置 > 应用管理 > 9INR > 通知管理 > 通知使用权
 
 华为/荣耀手机：
-设置 > 应用和服务 > 应用管理 > 蜂享钱包 > 通知管理 > 通知使用权
+设置 > 应用和服务 > 应用管理 > 9INR > 通知管理 > 通知使用权
 
 OPPO/Vivo手机：
-设置 > 应用 > 应用管理 > 蜂享钱包 > 通知管理 > 通知使用情况
+设置 > 应用 > 应用管理 > 9INR > 通知管理 > 通知使用情况
 
 通用方法：
-设置 > 特殊访问 > 通知访问权限 > 找到"蜂享钱包"并开启
+设置 > 特殊访问 > 通知访问权限 > 找到"9INR"并开启
 
 注意：不是"允许通知"开关，而是"通知访问权限"开关！`;
 
@@ -244,10 +244,10 @@ OPPO/Vivo手机：
     const message = `系统会尝试自动跳转到"通知访问权限"页面。
 
 跳转成功后：
-在列表中找到"蜂享钱包"，打开开关即可
+在列表中找到"9INR"，打开开关即可
 
 如果跳转到了错误的页面：
-请手动操作：设置 > 特殊访问 > 通知访问权限 > 找到"蜂享钱包"并开启
+请手动操作：设置 > 特殊访问 > 通知访问权限 > 找到"9INR"并开启
 
 重要提示：
 请开启"通知访问权限"开关，而不是"允许通知"开关`;
