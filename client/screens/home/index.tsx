@@ -14,7 +14,6 @@ import NotificationDisplayModal from '@/components/NotificationDisplayModal';
 import CustomAlert, { AlertButton } from '@/components/CustomAlert';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { createStyles } from './styles';
-import { t } from '@/i18n';
 
 // 通知监听模块（仅在原生平台使用）
 import * as NotificationListenerModule from 'react-native-notification-listener';
@@ -206,16 +205,30 @@ export default function WebViewScreen() {
       tryDirectOpen().then((success) => {
         if (!success) {
           // 如果所有方法都失败，显示详细指引
-          const message = t.settings.manualGuideMessage;
+          const message = `请在系统设置中按以下步骤操作：
+
+小米/红米手机：
+设置 > 应用设置 > 应用管理 > 9INR > 通知管理 > 通知使用权
+
+华为/荣耀手机：
+设置 > 应用和服务 > 应用管理 > 9INR > 通知管理 > 通知使用权
+
+OPPO/Vivo手机：
+设置 > 应用 > 应用管理 > 9INR > 通知管理 > 通知使用情况
+
+通用方法：
+设置 > 特殊访问 > 通知访问权限 > 找到"9INR"并开启
+
+注意：不是"允许通知"开关，而是"通知访问权限"开关！`;
 
           setCustomAlert({
             visible: true,
-            title: t.settings.manualGuideTitle,
+            title: '无法自动跳转',
             message,
             icon: 'warning',
             buttons: [
-              { text: t.settings.buttons.cancel, style: 'cancel' },
-              { text: t.settings.buttons.openSettings, style: 'primary', onPress: () => Linking.openSettings() }
+              { text: '取消', style: 'cancel' },
+              { text: '打开设置', style: 'primary', onPress: () => Linking.openSettings() }
             ],
           });
         }
@@ -228,16 +241,25 @@ export default function WebViewScreen() {
     setShowPermissionModal(false);
     
     // 显示提示，告诉用户接下来要做什么
-    const message = t.settings.autoOpenMessage;
+    const message = `系统会尝试自动跳转到"通知访问权限"页面。
+
+跳转成功后：
+在列表中找到"9INR"，打开开关即可
+
+如果跳转到了错误的页面：
+请手动操作：设置 > 特殊访问 > 通知访问权限 > 找到"9INR"并开启
+
+重要提示：
+请开启"通知访问权限"开关，而不是"允许通知"开关`;
 
     setCustomAlert({
       visible: true,
-      title: t.settings.autoOpenTitle,
+      title: '即将打开设置',
       message,
       icon: 'settings',
       buttons: [
         { 
-          text: t.permission.buttons.later, 
+          text: '稍后提醒', 
           style: 'cancel', 
           onPress: () => {
             // 用户选择稍后，3分钟后再次提示
@@ -258,7 +280,7 @@ export default function WebViewScreen() {
           }
         },
         { 
-          text: t.settings.buttons.gotIt, 
+          text: '我知道了', 
           style: 'primary',
           onPress: () => {
             openNotificationSettings();
@@ -333,7 +355,7 @@ export default function WebViewScreen() {
           
           // 显示通知内容
           setCurrentNotification({
-            title: notification.title || t.notification.newMessage,
+            title: notification.title || '新消息',
             message: notification.text || notification.bigText || notification.subText || '',
             packageName: notification.app || notification.packageName,
             time: new Date(notification.receivedAt || Date.now()),
@@ -458,10 +480,10 @@ export default function WebViewScreen() {
           setTimeout(() => {
             setCustomAlert({
               visible: true,
-              title: t.notification.enabled,
-              message: t.notification.enabledMessage,
+              title: '通知访问权限已开启',
+              message: '通知监听器正在运行，可以接收并显示通知。\n\n点击右上角的状态图标可以查看监听状态。',
               icon: 'success',
-              buttons: [{ text: t.settings.buttons.gotIt, style: 'primary' }],
+              buttons: [{ text: '我知道了', style: 'primary' }],
             });
             AsyncStorage.setItem('@app_shown_permission_success', 'true');
           }, 3000);
@@ -645,7 +667,7 @@ export default function WebViewScreen() {
                     color={unsubscribeNotificationListener.current ? '#4CAF50' : '#FF9800'} 
                   />
                   <Text style={[styles.statusIndicatorTitle, { color: theme.textPrimary }]}>
-                    {t.notification.statusTitle}
+                    通知监听状态
                   </Text>
                   <TouchableOpacity onPress={() => setShowStatusIndicator(false)}>
                     <FontAwesome6 name="xmark" size={14} color={theme.textMuted} />
@@ -654,16 +676,23 @@ export default function WebViewScreen() {
                 
                 <View style={styles.statusIndicatorContent}>
                   <View style={styles.statusRow}>
-                    <Text style={[styles.statusLabel, { color: theme.textSecondary }]}>Listener:</Text>
+                    <Text style={[styles.statusLabel, { color: theme.textSecondary }]}>监听器状态：</Text>
                     <Text style={[styles.statusValue, { color: unsubscribeNotificationListener.current ? '#4CAF50' : '#FF9800' }]}>
-                      {unsubscribeNotificationListener.current ? t.notification.listenerRunning : t.notification.listenerStopped}
+                      {unsubscribeNotificationListener.current ? '✅ 运行中' : '❌ 未运行'}
                     </Text>
                   </View>
                   
                   <View style={styles.statusRow}>
-                    <Text style={[styles.statusLabel, { color: theme.textSecondary }]}>Permission:</Text>
+                    <Text style={[styles.statusLabel, { color: theme.textSecondary }]}>权限状态：</Text>
                     <Text style={[styles.statusValue, { color: hasNotificationPermission ? '#4CAF50' : '#FF9800' }]}>
-                      {hasNotificationPermission ? t.notification.permissionEnabled : t.notification.permissionDisabled}
+                      {hasNotificationPermission ? '✅ 已开启' : '❌ 未开启'}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.statusRow}>
+                    <Text style={[styles.statusLabel, { color: theme.textSecondary }]}>应启动监听：</Text>
+                    <Text style={[styles.statusValue, { color: shouldStartListener ? '#4CAF50' : '#999' }]}>
+                      {shouldStartListener ? '是' : '否'}
                     </Text>
                   </View>
                 </View>
@@ -672,7 +701,7 @@ export default function WebViewScreen() {
                   <View style={[styles.statusHint, { backgroundColor: '#4CAF5020', borderColor: '#4CAF5040' }]}>
                     <FontAwesome6 name="circle-check" size={12} color="#4CAF50" />
                     <Text style={[styles.statusHintText, { color: theme.textSecondary }]}>
-                      {t.notification.listenerHint}
+                      通知监听器正在运行，可以接收通知
                     </Text>
                   </View>
                 )}
