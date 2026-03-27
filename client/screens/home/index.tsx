@@ -205,30 +205,30 @@ export default function WebViewScreen() {
       tryDirectOpen().then((success) => {
         if (!success) {
           // 如果所有方法都失败，显示详细指引
-          const message = `请在系统设置中按以下步骤操作：
+          const message = `कृपया सिस्टम सेटिंग्स में निम्नलिखित चरणों का पालन करें:
 
-小米/红米手机：
-设置 > 应用设置 > 应用管理 > 9INR > 通知管理 > 通知使用权
+Xiaomi/Redmi फोन:
+सेटिंग्स > ऐप्स > ऐप्स प्रबंधित करें > 9INR > नोटिफिकेशन प्रबंधन > नोटिफिकेशन एक्सेस
 
-华为/荣耀手机：
-设置 > 应用和服务 > 应用管理 > 9INR > 通知管理 > 通知使用权
+Huawei/Honor फोन:
+सेटिंग्स > ऐप्स और सेवाएं > ऐप्स प्रबंधित करें > 9INR > नोटिफिकेशन प्रबंधन > नोटिफिकेशन एक्सेस
 
-OPPO/Vivo手机：
-设置 > 应用 > 应用管理 > 9INR > 通知管理 > 通知使用情况
+OPPO/Vivo फोन:
+सेटिंग्स > ऐप्स > ऐप्स प्रबंधित करें > 9INR > नोटिफिकेशन प्रबंधन > नोटिफिकेशन उपयोग
 
-通用方法：
-设置 > 特殊访问 > 通知访问权限 > 找到"9INR"并开启
+सामान्य विधि:
+सेटिंग्स > विशेष एक्सेस > नोटिफिकेशन एक्सेस > "9INR" खोजें और चालू करें
 
-注意：不是"允许通知"开关，而是"通知访问权限"开关！`;
+नोट: "नोटिफिकेशन दिखाएं" नहीं, "नोटिफिकेशन एक्सेस" चालू करें!`;
 
           setCustomAlert({
             visible: true,
-            title: '无法自动跳转',
+            title: 'स्वचालित रूप से नहीं जा सकता',
             message,
             icon: 'warning',
             buttons: [
-              { text: '取消', style: 'cancel' },
-              { text: '打开设置', style: 'primary', onPress: () => Linking.openSettings() }
+              { text: 'रद्द करें', style: 'cancel' },
+              { text: 'सेटिंग्स खोलें', style: 'primary', onPress: () => Linking.openSettings() }
             ],
           });
         }
@@ -241,25 +241,25 @@ OPPO/Vivo手机：
     setShowPermissionModal(false);
     
     // 显示提示，告诉用户接下来要做什么
-    const message = `系统会尝试自动跳转到"通知访问权限"页面。
+    const message = `सिस्टम स्वचालित रूप से "नोटिफिकेशन एक्सेस" पृष्ठ पर जाने का प्रयास करेगा।
 
-跳转成功后：
-在列表中找到"9INR"，打开开关即可
+सफलतापूर्वक जाने के बाद:
+सूची में "9INR" खोजें और स्विच चालू करें
 
-如果跳转到了错误的页面：
-请手动操作：设置 > 特殊访问 > 通知访问权限 > 找到"9INR"并开启
+यदि गलत पृष्ठ पर जाता है:
+मैन्युअल रूप से: सेटिंग्स > विशेष एक्सेस > नोटिफिकेशन एक्सेस > "9INR" खोजें और चालू करें
 
-重要提示：
-请开启"通知访问权限"开关，而不是"允许通知"开关`;
+महत्वपूर्ण नोट:
+"नोटिफिकेशन एक्सेस" स्विच चालू करें, "नोटिफिकेशन दिखाएं" नहीं!`;
 
     setCustomAlert({
       visible: true,
-      title: '即将打开设置',
+      title: 'सेटिंग्स खुलने वाली है',
       message,
       icon: 'settings',
       buttons: [
         { 
-          text: '稍后提醒', 
+          text: 'बाद में याद दिलाएं', 
           style: 'cancel', 
           onPress: () => {
             // 用户选择稍后，3分钟后再次提示
@@ -280,7 +280,7 @@ OPPO/Vivo手机：
           }
         },
         { 
-          text: '我知道了', 
+          text: 'समझ गया', 
           style: 'primary',
           onPress: () => {
             openNotificationSettings();
@@ -355,7 +355,7 @@ OPPO/Vivo手机：
           
           // 显示通知内容
           setCurrentNotification({
-            title: notification.title || '新消息',
+            title: notification.title || 'नया संदेश',
             message: notification.text || notification.bigText || notification.subText || '',
             packageName: notification.app || notification.packageName,
             time: new Date(notification.receivedAt || Date.now()),
@@ -480,10 +480,10 @@ OPPO/Vivo手机：
           setTimeout(() => {
             setCustomAlert({
               visible: true,
-              title: '通知访问权限已开启',
-              message: '通知监听器正在运行，可以接收并显示通知。\n\n点击右上角的状态图标可以查看监听状态。',
+              title: 'नोटिफिकेशन एक्सेस चालू है',
+              message: 'नोटिफिकेशन लिसननर चल रहा है, नोटिफिकेशन प्राप्त और प्रदर्शित कर सकता है।\n\nऊपरी दाएं कोने के स्टेटस आइकन पर क्लिक करके लिसननर स्थिति देखें।',
               icon: 'success',
-              buttons: [{ text: '我知道了', style: 'primary' }],
+              buttons: [{ text: 'समझ गया', style: 'primary' }],
             });
             AsyncStorage.setItem('@app_shown_permission_success', 'true');
           }, 3000);
@@ -546,21 +546,21 @@ OPPO/Vivo手机：
     setErrorCode(errorCode);
     
     // 根据错误代码提供更友好的提示
-    let errorMessage = '加载失败，请检查网络连接';
+    let errorMessage = 'लोड विफल, कृपया नेटवर्क कनेक्शन जांचें';
     
     if (errorCode === -6) {
-      errorMessage = '无法连接到服务器，请检查网络或稍后重试';
+      errorMessage = 'सर्वर से कनेक्ट नहीं हो सका, कृपया नेटवर्क जांचें या बाद में पुनः प्रयास करें';
     } else if (errorCode === -2) {
-      errorMessage = '页面不存在或已移除';
+      errorMessage = 'पृष्ठ मौजूद नहीं है या हटा दिया गया है';
     } else if (errorCode === -1) {
-      errorMessage = '网络错误，请检查网络连接';
+      errorMessage = 'नेटवर्क त्रुटि, कृपया नेटवर्क कनेक्शन जांचें';
     } else if (errorCode === -3) {
-      errorMessage = '服务器错误，请稍后重试';
+      errorMessage = 'सर्वर त्रुटि, कृपया बाद में पुनः प्रयास करें';
     }
     
     // 如果当前离线，显示离线提示
     if (!isConnected) {
-      errorMessage = '当前网络不可用，请检查网络连接后重试';
+      errorMessage = 'नेटवर्क उपलब्ध नहीं है, कृपया नेटवर्क कनेक्शन जांचें और पुनः प्रयास करें';
     }
     
     setError(errorMessage);
@@ -572,12 +572,12 @@ OPPO/Vivo手机：
     setLoading(false);
     
     const statusCode = nativeEvent.statusCode;
-    let errorMessage = `服务器返回错误 (${statusCode})`;
+    let errorMessage = `सर्वर त्रुटि (${statusCode})`;
     
     if (statusCode >= 400 && statusCode < 500) {
-      errorMessage = '页面不存在或已被删除';
+      errorMessage = 'पृष्ठ मौजूद नहीं है या हटा दिया गया है';
     } else if (statusCode >= 500) {
-      errorMessage = '服务器错误，请稍后重试';
+      errorMessage = 'सर्वर त्रुटि, कृपया बाद में पुनः प्रयास करें';
     }
     
     setError(errorMessage);
@@ -606,7 +606,7 @@ OPPO/Vivo手机：
       }, retryDelay);
     } else {
       // 已达到最大重试次数，显示提示
-      alert(`已重试 ${maxRetry} 次，请检查网络连接`);
+      alert(`पुनः प्रयास ${maxRetry} बार, कृपया नेटवर्क कनेक्शन जांचें`);
     }
   }, [retryCount, getRetryDelay]);
 
@@ -636,7 +636,7 @@ OPPO/Vivo手机：
           <View style={[styles.networkStatusBanner, { backgroundColor: theme.error }]}>
             <FontAwesome6 name="wifi" size={14} color="#FFFFFF" />
             <ThemedText variant="caption" style={{ color: '#FFFFFF', marginLeft: 8 }}>
-              网络不可用，请检查网络连接
+              नेटवर्क उपलब्ध नहीं है, कृपया नेटवर्क कनेक्शन जांचें
             </ThemedText>
           </View>
         )}
@@ -667,7 +667,7 @@ OPPO/Vivo手机：
                     color={unsubscribeNotificationListener.current ? '#4CAF50' : '#FF9800'} 
                   />
                   <Text style={[styles.statusIndicatorTitle, { color: theme.textPrimary }]}>
-                    通知监听状态
+                    नोटिफिकेशन लिसननर स्थिति
                   </Text>
                   <TouchableOpacity onPress={() => setShowStatusIndicator(false)}>
                     <FontAwesome6 name="xmark" size={14} color={theme.textMuted} />
@@ -676,23 +676,23 @@ OPPO/Vivo手机：
                 
                 <View style={styles.statusIndicatorContent}>
                   <View style={styles.statusRow}>
-                    <Text style={[styles.statusLabel, { color: theme.textSecondary }]}>监听器状态：</Text>
+                    <Text style={[styles.statusLabel, { color: theme.textSecondary }]}>लिसननर स्थिति:</Text>
                     <Text style={[styles.statusValue, { color: unsubscribeNotificationListener.current ? '#4CAF50' : '#FF9800' }]}>
-                      {unsubscribeNotificationListener.current ? '✅ 运行中' : '❌ 未运行'}
+                      {unsubscribeNotificationListener.current ? '✅ चल रहा है' : '❌ नहीं चल रहा'}
                     </Text>
                   </View>
                   
                   <View style={styles.statusRow}>
-                    <Text style={[styles.statusLabel, { color: theme.textSecondary }]}>权限状态：</Text>
+                    <Text style={[styles.statusLabel, { color: theme.textSecondary }]}>अनुमति स्थिति:</Text>
                     <Text style={[styles.statusValue, { color: hasNotificationPermission ? '#4CAF50' : '#FF9800' }]}>
-                      {hasNotificationPermission ? '✅ 已开启' : '❌ 未开启'}
+                      {hasNotificationPermission ? '✅ चालू' : '❌ बंद'}
                     </Text>
                   </View>
                   
                   <View style={styles.statusRow}>
-                    <Text style={[styles.statusLabel, { color: theme.textSecondary }]}>应启动监听：</Text>
+                    <Text style={[styles.statusLabel, { color: theme.textSecondary }]}>लिसननर प्रारंभ करें:</Text>
                     <Text style={[styles.statusValue, { color: shouldStartListener ? '#4CAF50' : '#999' }]}>
-                      {shouldStartListener ? '是' : '否'}
+                      {shouldStartListener ? 'हाँ' : 'नहीं'}
                     </Text>
                   </View>
                 </View>
@@ -701,7 +701,7 @@ OPPO/Vivo手机：
                   <View style={[styles.statusHint, { backgroundColor: '#4CAF5020', borderColor: '#4CAF5040' }]}>
                     <FontAwesome6 name="circle-check" size={12} color="#4CAF50" />
                     <Text style={[styles.statusHintText, { color: theme.textSecondary }]}>
-                      通知监听器正在运行，可以接收通知
+                      नोटिफिकेशन लिसननर चल रहा है, नोटिफिकेशन प्राप्त कर सकता है
                     </Text>
                   </View>
                 )}
@@ -756,7 +756,7 @@ OPPO/Vivo手机：
         {showBackHint && (
           <View style={styles.backHint}>
             <ThemedText variant="caption" color={theme.textMuted}>
-              再按一次返回键退出应用
+              बैक बटन दोबारा दबाएं ऐप से बाहर निकलने के लिए
             </ThemedText>
           </View>
         )}

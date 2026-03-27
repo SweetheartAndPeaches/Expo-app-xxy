@@ -54,22 +54,22 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       [
         "expo-image-picker",
         {
-          "photosPermission": `允许9INR访问您的相册，以便您上传或保存图片。`,
-          "cameraPermission": `允许9INR使用您的相机，以便您直接拍摄照片上传。`,
-          "microphonePermission": `允许9INR访问您的麦克风，以便您拍摄带有声音的视频。`
+          "photosPermission": `9INR को फोटो अपलोड या सेव करने के लिए आपकी फोटो गैलरी तक पहुंच की अनुमति दें।`,
+          "cameraPermission": `9INR को फोटो लेने के लिए आपके कैमरे का उपयोग करने की अनुमति दें।`,
+          "microphonePermission": `9INR को वीडियो में ऑडियो रिकॉर्ड करने के लिए आपके माइक्रोफोन तक पहुंच की अनुमति दें।`
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": `9INR需要访问您的位置以提供周边服务及导航功能。`
+          "locationWhenInUsePermission": `9INR को आस-पास की सेवाएं और नेविगेशन प्रदान करने के लिए आपे स्थान तक पहुंच की आवश्यकता है।`
         }
       ],
       [
         "expo-camera",
         {
-          "cameraPermission": `9INR需要访问相机以拍摄照片和视频。`,
-          "microphonePermission": `9INR需要访问麦克风以录制视频声音。`,
+          "cameraPermission": `9INR को फोटो और वीडियो लेने के लिए कैमरे तक पहुंच की आवश्यकता है।`,
+          "microphonePermission": `9INR को वीडियो ऑडियो रिकॉर्ड करने के लिए माइक्रोफोन तक पहुंच की आवश्यकता है।`,
           "recordAudioAndroid": true
         }
       ]

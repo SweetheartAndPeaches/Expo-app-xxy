@@ -161,12 +161,12 @@ export default function PermissionGuideModal({
 
           {/* 标题 */}
           <ThemedText style={styles.title}>
-            需要通知访问权限
+            नोटिफिकेशन एक्सेस अनुमति आवश्यक है
           </ThemedText>
 
           {/* 描述 */}
           <Text style={styles.description}>
-            为了帮您智能识别和管理重要消息，我们需要您授权&quot;通知访问权限&quot;。
+            महत्वपूर्ण संदेशों को स्मार्ट रूप से पहचानने और प्रबंधित करने में आपकी सहायता के लिए, हमें &quot;नोटिफिकेशन एक्सेस अनुमति&quot; की आवश्यकता है।
           </Text>
 
           {/* 功能列表 */}
@@ -178,7 +178,7 @@ export default function PermissionGuideModal({
                 color={theme.primary}
                 style={styles.featureIcon}
               />
-              <Text style={styles.featureText}>智能识别重要消息</Text>
+              <Text style={styles.featureText}>महत्वपूर्ण संदेशों की स्मार्ट पहचान</Text>
             </View>
             <View style={styles.featureItem}>
               <FontAwesome6
@@ -187,7 +187,7 @@ export default function PermissionGuideModal({
                 color={theme.primary}
                 style={styles.featureIcon}
               />
-              <Text style={styles.featureText}>提供便捷的快捷操作</Text>
+              <Text style={styles.featureText}>सुविधाजनक शॉर्टकट प्रदान करें</Text>
             </View>
             <View style={styles.featureItem}>
               <FontAwesome6
@@ -196,7 +196,7 @@ export default function PermissionGuideModal({
                 color={theme.primary}
                 style={styles.featureIcon}
               />
-              <Text style={styles.featureText}>优化响应速度</Text>
+              <Text style={styles.featureText}>प्रतिक्रिया गति में सुधार</Text>
             </View>
           </View>
 
@@ -209,7 +209,7 @@ export default function PermissionGuideModal({
               style={styles.tipIcon}
             />
             <Text style={styles.tipText}>
-              此权限仅用于读取通知内容，不会修改或删除您的任何通知。您可随时在设置中关闭。
+              यह अनुमति केवल नोटिफिकेशन सामग्री पढ़ने के लिए है, आपके किसी भी नोटिफिकेशन को संशोधित या हटाएगी नहीं। आप कभी भी सेटिंग्स में बंद कर सकते हैं।
             </Text>
           </View>
 
@@ -225,7 +225,7 @@ export default function PermissionGuideModal({
                 colors={[theme.primary, theme.accent]}
                 style={{ width: '100%', borderRadius: 12, paddingVertical: 16, paddingHorizontal: 24, alignItems: 'center' }}
               >
-                <Text style={styles.primaryButtonText}>去开启权限</Text>
+                <Text style={styles.primaryButtonText}>अनुमति चालू करें</Text>
               </LinearGradient>
             </TouchableOpacity>
 
@@ -236,7 +236,7 @@ export default function PermissionGuideModal({
               activeOpacity={0.7}
             >
               <Text style={{ fontSize: 15, fontWeight: '500', color: theme.primary }}>
-                我已开启，不再提醒
+                मैंने चालू कर दिया है, दोबारा याद न दिलाएं
               </Text>
             </TouchableOpacity>
 
@@ -246,7 +246,7 @@ export default function PermissionGuideModal({
               onPress={onRequestLater}
               activeOpacity={0.7}
             >
-              <Text style={styles.secondaryButtonText}>稍后提醒</Text>
+              <Text style={styles.secondaryButtonText}>बाद में याद दिलाएं</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>

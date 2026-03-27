@@ -18,7 +18,7 @@ interface AdvancedErrorProps {
 
 export function AdvancedError({
   errorCode = -6,
-  errorDescription = '无法连接到服务器',
+  errorDescription = 'सर्वर से कनेक्ट नहीं हो सका',
   onRetry,
   onCheckNetwork,
   onContactSupport,
@@ -315,14 +315,14 @@ export function AdvancedError({
 
         {/* 错误标题 */}
         <ThemedText variant="h2" color={theme.textPrimary} style={styles.errorTitle}>
-          {errorType === 'blocked' ? '无法访问' : '连接失败'}
+          {errorType === 'blocked' ? 'पहुंच अवरुद्ध' : 'कनेक्शन विफल'}
         </ThemedText>
 
         {/* 错误描述 */}
         <View style={styles.errorContent}>
           <ThemedText variant="body" color={theme.textSecondary} style={styles.errorDescription}>
             {errorType === 'blocked'
-              ? '检测到当前网络环境可能受到限制，无法正常访问目标服务器。这可能是因为：'
+              ? 'वर्तमान नेटवर्क वातावरण प्रतिबंधित हो सकता है, लक्ष्य सर्वर तक सामान्य पहुंच संभव नहीं है। यह इस कारण हो सकता है:'
               : errorDescription}
           </ThemedText>
 
@@ -331,19 +331,19 @@ export function AdvancedError({
               <View style={styles.reasonItem}>
                 <FontAwesome6 name="shield-halved" size={16} color={theme.primary} />
                 <ThemedText variant="small" color={theme.textSecondary}>
-                  当地网络政策限制
+                  स्थानीय नेटवर्क नीति प्रतिबंध
                 </ThemedText>
               </View>
               <View style={styles.reasonItem}>
                 <FontAwesome6 name="globe" size={16} color={theme.primary} />
                 <ThemedText variant="small" color={theme.textSecondary}>
-                  地区访问限制
+                  क्षेत्रीय पहुंच प्रतिबंध
                 </ThemedText>
               </View>
               <View style={styles.reasonItem}>
                 <FontAwesome6 name="network-wired" size={16} color={theme.primary} />
                 <ThemedText variant="small" color={theme.textSecondary}>
-                  防火墙或安全软件拦截
+                  फ़ायरवॉल या सुरक्षा सॉफ़्टवेयर अवरोध
                 </ThemedText>
               </View>
             </View>
@@ -352,7 +352,7 @@ export function AdvancedError({
           {/* 错误代码 */}
           <View style={[styles.errorCode, { backgroundColor: `${theme.error}15` }]}>
             <ThemedText variant="caption" color={theme.error}>
-              错误代码: {errorCode}
+              त्रुटि कोड: {errorCode}
             </ThemedText>
           </View>
         </View>
@@ -365,7 +365,7 @@ export function AdvancedError({
           >
             <FontAwesome6 name="rotate-right" size={16} color={theme.buttonPrimaryText} />
             <ThemedText variant="smallMedium" color={theme.buttonPrimaryText}>
-              重新尝试
+              पुनः प्रयास करें
             </ThemedText>
           </TouchableOpacity>
 
@@ -376,7 +376,7 @@ export function AdvancedError({
             >
               <FontAwesome6 name="network-wired" size={16} color={theme.primary} />
               <ThemedText variant="smallMedium" color={theme.primary}>
-                检查网络
+                नेटवर्क जांचें
               </ThemedText>
             </TouchableOpacity>
           )}
@@ -388,7 +388,7 @@ export function AdvancedError({
             >
               <FontAwesome6 name="headset" size={16} color={theme.primary} />
               <ThemedText variant="smallMedium" color={theme.primary}>
-                联系支持
+                सहायता से संपर्क करें
               </ThemedText>
             </TouchableOpacity>
           )}
@@ -398,7 +398,7 @@ export function AdvancedError({
         <View style={[styles.hint, { backgroundColor: `${theme.textMuted}10` }]}>
           <FontAwesome6 name="lightbulb" size={14} color={theme.textMuted} />
           <ThemedText variant="caption" color={theme.textMuted}>
-            提示：您可以尝试切换网络或使用 VPN 来访问
+            सुझाव: नेटवर्क बदलने या VPN का उपयोग करने का प्रयास करें
           </ThemedText>
         </View>
       </View>

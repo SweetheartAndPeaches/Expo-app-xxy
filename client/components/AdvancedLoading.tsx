@@ -15,10 +15,10 @@ interface LoadingStep {
 }
 
 const LOADING_STEPS: LoadingStep[] = [
-  { id: 'step-1', text: '正在连接服务器...', delay: 300 },
-  { id: 'step-2', text: '正在加载页面内容...', delay: 900 },
-  { id: 'step-3', text: '正在初始化资源...', delay: 1500 },
-  { id: 'step-4', text: '准备就绪', delay: 2100 },
+  { id: 'step-1', text: 'सर्वर से कनेक्ट हो रहा है...', delay: 300 },
+  { id: 'step-2', text: 'पेज सामग्री लोड हो रही है...', delay: 900 },
+  { id: 'step-3', text: 'संसाधन आरंभ हो रहे हैं...', delay: 1500 },
+  { id: 'step-4', text: 'तैयार है', delay: 2100 },
 ];
 
 type StepStatus = 'pending' | 'spinning' | 'done';
@@ -253,7 +253,7 @@ export function AdvancedLoading({ appName }: AdvancedLoadingProps) {
 
         {/* 加载标题 */}
         <ThemedText variant="h3" color={theme.primary} style={styles.loadingTitle}>
-          正在加载...
+          लोड हो रहा है...
         </ThemedText>
 
         {/* 加载步骤列表 */}

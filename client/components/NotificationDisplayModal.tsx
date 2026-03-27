@@ -157,13 +157,13 @@ export default function NotificationDisplayModal({
   // 获取应用名称
   const getAppName = (packageName?: string) => {
     if (!packageName) return '';
-    if (packageName.includes('wechat')) return '微信';
+    if (packageName.includes('wechat')) return 'WeChat';
     if (packageName.includes('qq')) return 'QQ';
-    if (packageName.includes('alipay')) return '支付宝';
-    if (packageName.includes('taobao')) return '淘宝';
-    if (packageName.includes('jd')) return '京东';
-    if (packageName.includes('douyin')) return '抖音';
-    if (packageName.includes('weibo')) return '微博';
+    if (packageName.includes('alipay')) return 'Alipay';
+    if (packageName.includes('taobao')) return 'Taobao';
+    if (packageName.includes('jd')) return 'JD';
+    if (packageName.includes('douyin')) return 'TikTok';
+    if (packageName.includes('weibo')) return 'Weibo';
     return packageName;
   };
 
@@ -195,9 +195,9 @@ export default function NotificationDisplayModal({
               <FontAwesome6 name="bell" size={22} color="#FFFFFF" />
             </LinearGradient>
             <View style={styles.headerText}>
-              <Text style={styles.newMessageLabel}>收到新消息</Text>
+              <Text style={styles.newMessageLabel}>नया संदेश प्राप्त हुआ</Text>
               <Text style={styles.timeText}>
-                {notification.time?.toLocaleTimeString('zh-CN', {
+                {notification.time?.toLocaleTimeString('en-IN', {
                   hour: '2-digit',
                   minute: '2-digit',
                 })}{' '}
@@ -218,7 +218,7 @@ export default function NotificationDisplayModal({
           <View style={styles.footer}>
             <TouchableOpacity style={styles.closeButton} onPress={onClose}>
               <Text style={[styles.buttonText, styles.closeButtonText]}>
-                关闭
+                बंद करें
               </Text>
             </TouchableOpacity>
           </View>
