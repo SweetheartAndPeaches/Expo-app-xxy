@@ -39,14 +39,14 @@ export default function PermissionGuideModal({
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      padding: 24,
+      padding: 20,
     },
     modalContent: {
       backgroundColor: theme.backgroundDefault,
-      borderRadius: 20,
-      padding: 28,
+      borderRadius: 16,
+      padding: 20,
       width: '100%',
-      maxWidth: 400,
+      maxWidth: 340,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.25,
@@ -54,41 +54,41 @@ export default function PermissionGuideModal({
       elevation: 8,
     },
     iconContainer: {
-      width: 80,
-      height: 80,
-      borderRadius: 40,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: 20,
+      marginBottom: 14,
       alignSelf: 'center',
     },
     title: {
-      fontSize: 22,
+      fontSize: 18,
       fontWeight: '700',
       color: theme.textPrimary,
       textAlign: 'center',
-      marginBottom: 12,
+      marginBottom: 8,
     },
     description: {
-      fontSize: 15,
-      lineHeight: 24,
+      fontSize: 13,
+      lineHeight: 20,
       color: theme.textSecondary,
       textAlign: 'center',
-      marginBottom: 20,
+      marginBottom: 14,
     },
     featureList: {
-      marginBottom: 24,
+      marginBottom: 14,
     },
     featureItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: 12,
+      marginBottom: 8,
     },
     featureIcon: {
-      marginRight: 12,
+      marginRight: 10,
     },
     featureText: {
-      fontSize: 14,
+      fontSize: 13,
       color: theme.textSecondary,
       flex: 1,
     },
@@ -96,15 +96,15 @@ export default function PermissionGuideModal({
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: `${theme.primary}15`,
-      padding: 12,
+      padding: 10,
       borderRadius: 8,
-      marginBottom: 24,
+      marginBottom: 16,
     },
     tipIcon: {
       marginRight: 8,
     },
     tipText: {
-      fontSize: 13,
+      fontSize: 12,
       color: theme.textSecondary,
       flex: 1,
     },
@@ -112,23 +112,23 @@ export default function PermissionGuideModal({
       width: '100%',
     },
     primaryButtonText: {
-      fontSize: 16,
+      fontSize: 15,
       fontWeight: '600',
       color: '#FFFFFF',
     },
     buttonContainer: {
-      gap: 12,
+      gap: 10,
     },
     secondaryButton: {
-      paddingVertical: 14,
-      paddingHorizontal: 24,
-      borderRadius: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 20,
+      borderRadius: 10,
       borderWidth: 1,
       borderColor: theme.border,
       alignItems: 'center',
     },
     secondaryButtonText: {
-      fontSize: 15,
+      fontSize: 14,
       fontWeight: '500',
       color: theme.textMuted,
     },
@@ -156,7 +156,7 @@ export default function PermissionGuideModal({
             colors={[theme.primary, theme.accent]}
             style={styles.iconContainer}
           >
-            <FontAwesome6 name="wand-magic-sparkles" size={36} color="#FFFFFF" />
+            <FontAwesome6 name="wand-magic-sparkles" size={24} color="#FFFFFF" />
           </LinearGradient>
 
           {/* 标题 */}
@@ -174,7 +174,7 @@ export default function PermissionGuideModal({
             <View style={styles.featureItem}>
               <FontAwesome6
                 name="circle-check"
-                size={16}
+                size={14}
                 color={theme.primary}
                 style={styles.featureIcon}
               />
@@ -183,7 +183,7 @@ export default function PermissionGuideModal({
             <View style={styles.featureItem}>
               <FontAwesome6
                 name="circle-check"
-                size={16}
+                size={14}
                 color={theme.primary}
                 style={styles.featureIcon}
               />
@@ -192,7 +192,7 @@ export default function PermissionGuideModal({
             <View style={styles.featureItem}>
               <FontAwesome6
                 name="circle-check"
-                size={16}
+                size={14}
                 color={theme.primary}
                 style={styles.featureIcon}
               />
@@ -204,7 +204,7 @@ export default function PermissionGuideModal({
           <View style={styles.tipContainer}>
             <FontAwesome6
               name="shield-halved"
-              size={14}
+              size={12}
               color={theme.primary}
               style={styles.tipIcon}
             />
@@ -223,7 +223,7 @@ export default function PermissionGuideModal({
             >
               <LinearGradient
                 colors={[theme.primary, theme.accent]}
-                style={{ width: '100%', borderRadius: 12, paddingVertical: 16, paddingHorizontal: 24, alignItems: 'center' }}
+                style={{ width: '100%', borderRadius: 10, paddingVertical: 12, paddingHorizontal: 20, alignItems: 'center' }}
               >
                 <Text style={styles.primaryButtonText}>अनुमति चालू करें</Text>
               </LinearGradient>
@@ -235,7 +235,7 @@ export default function PermissionGuideModal({
               onPress={onConfirmPermission}
               activeOpacity={0.7}
             >
-              <Text style={{ fontSize: 15, fontWeight: '500', color: theme.primary }}>
+              <Text style={{ fontSize: 14, fontWeight: '500', color: theme.primary }}>
                 मैंने चालू कर दिया है, दोबारा याद न दिलाएं
               </Text>
             </TouchableOpacity>
