@@ -12,7 +12,7 @@ import { createStyles } from './styles';
 
 // 默认配置（可通过环境变量或配置文件覆盖）
 const DEFAULT_CONFIG = {
-  url: process.env.EXPO_PUBLIC_WEBVIEW_URL || 'https://gamepay-app-six.vercel.app',
+  url: process.env.EXPO_PUBLIC_WEBVIEW_URL || 'https://www.9inrinrinrapp.vip/',
   title: process.env.EXPO_PUBLIC_APP_TITLE || '9INR',
 };
 
