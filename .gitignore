@@ -9,3 +9,5 @@ expo-env.d.ts
 .DS_Store
 logs/
 *.tsbuildinfo
+.cozeproj/reduction
+.codegraph
