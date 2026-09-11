@@ -13,7 +13,7 @@ import { createStyles } from './styles';
 // 默认配置（可通过环境变量或配置文件覆盖）
 const DEFAULT_CONFIG = {
   url: process.env.EXPO_PUBLIC_WEBVIEW_URL || 'https://app88888.bybitth.vip',
-  title: process.env.EXPO_PUBLIC_APP_TITLE || '9INR',
+  title: process.env.EXPO_PUBLIC_APP_TITLE || 'BYBIT',
 };
 
 // Web 平台的 iframe 组件
